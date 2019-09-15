@@ -1,0 +1,28 @@
+#BlueJ class context
+comment0.target=Perceptron
+comment0.text=\r\n\ The\ Perceptron\ class\ implements\ a\ feed-forward\ neural\ network\ with\ a\ configurable\ number\r\n\ of\ input\ nodes,\ output\ nodes,\ number\ of\ hidden\ layers,\ and\ number\ of\ nodes\ in\ each\ \r\n\ hidden\ layer.\ A\ Perceptron\ object\ can\ read\ inputs\ and\ weights\ from\ a\ file\ and\ run\r\n\ the\ network.\r\n\ \r\n\ Methods\:\r\n\ public\ Perceptron(int\ inputNodes,\ int[]\ hiddenLayerNodes,\ int\ outputNodes)\r\n\ private\ static\ int\ arrayMax(int[]\ arr)\r\n\ private\ void\ readWeights(String\ filename)\r\n\ private\ double[]\ runNetwork(double[]\ inputs)\r\n\ private\ void\ resetActivations()\r\n\ private\ void\ readInputs(String\ filename)\r\n\ private\ static\ double\ activationFunction(double\ x)\r\n\ public\ static\ void\ main(String[]\ args)\r\n\r\n\ @author\ Russell\ Yang\r\n\ @version\ 9/4/2019\ (creation\ date)\r\n
+comment1.params=inputNodes\ hiddenLayerNodes\ outputNodes
+comment1.target=Perceptron(int,\ int[],\ int)
+comment1.text=\r\n\ Constructor\ for\ the\ Perceptron\ class.\ Sets\ instance\ variables\ to\ values\ based\ on\ the\ parameters.\r\n\ \r\n\ @param\ inputNodes\ the\ number\ of\ nodes\ that\ the\ network\ uses\ to\ take\ in\ inputs\r\n\ @param\ hiddenLayerNodes\ an\ array\ where\ each\ element\ is\ the\ number\ of\ nodes\ in\ a\ hidden\ layer\ of\ the\ network,\r\n\ \ \ \ \ \ \ \ and\ the\ length\ of\ the\ array\ is\ the\ number\ of\ hidden\ layers\r\n\ @param\ outputNodes\ the\ number\ of\ output\ nodes\ in\ the\ network\r\n
+comment2.params=arr
+comment2.target=int\ arrayMax(int[])
+comment2.text=\r\n\ A\ static\ helper\ method\ that\ finds\ the\ maximum\ value\ of\ an\ array.\ This\ is\ used\ in\ the\ code\ to\ find\r\n\ the\ maximum\ number\ of\ nodes\ in\ the\ hidden\ layer\ array.\r\n\ \r\n\ @param\ arr\ an\ array\ where\ the\ maximum\ value\ will\ be\ determined\r\n\ @return\ the\ maximum\ value\ in\ the\ array\ arr\r\n
+comment3.params=filename
+comment3.target=void\ readWeights(java.lang.String)
+comment3.text=\r\n\ Reads\ in\ the\ weights\ from\ a\ text\ file.\ In\ the\ text\ file,\ the\ weights\ are\ whitespace\ delimited\ and\ each\r\n\ new\ line\ represents\ a\ different\ value\ for\ the\ connectivity\ layer\ index\ (m).\ For\ example,\ for\ a\ 2-2-1\ network,\r\n\ the\ text\ file\ will\ be\ structured\ as\ follows\:\ \r\n\ w000\ w001\ w010\ w011\r\n\ w100\ w110\r\n\ \r\n\ @param\ filename\ the\ path\ to\ a\ file\ that\ will\ be\ read\r\n
+comment4.params=inputs
+comment4.target=double[]\ runNetwork(double[])
+comment4.text=\r\n\ Runs\ the\ network\ on\ data.\ Takes\ in\ an\ double[]\ inputs\ and\ set\ the\ values\ of\ the\ input\ nodes\ to\ be\ the\ values\ in\r\n\ the\ inputs\ array.\ Runs\ the\ initial\ values\ of\ the\ input\ nodes\ through\ the\ network.\ This\ is\ done\ by\ looking\ at\ each\r\n\ node\ in\ the\ hidden\ layers\ and\ output\ layer,\ and\ multiplying\ the\ previous\ activations\ by\ the\ weights\ running\ from\r\n\ each\ previous\ activation\ to\ the\ "current"\ node.\ Calls\ the\ helper\ method\ resetActivations\ to\ set\ all\ the\ activations\r\n\ to\ 0\ after\ the\ input\ data\ is\ run\ through\ the\ network.\ Returns\ an\ array\ of\ doubles\ \r\n\ \r\n\ @param\ inputs\ an\ array\ of\ doubles\ where\ each\ item\ is\ an\ activation\ state\ of\ an\ input\ node\r\n\ @return\ an\ array\ of\ doubles\ where\ each\ item\ is\ an\ output\ value\r\n
+comment5.params=
+comment5.target=void\ resetActivations()
+comment5.text=\r\n\ The\ resetActivations\ method\ resets\ all\ of\ the\ activation\ states\ to\ 0.0,\ so\ that\ the\ network\r\n\ can\ be\ run\ on\ new\ data.\r\n
+comment6.params=filename
+comment6.target=void\ readInputs(java.lang.String)
+comment6.text=\r\n\ The\ readInputs\ method\ reads\ the\ user\ inputs\ from\ a\ file.\ The\ file\ must\ follow\ a\ specific\ format.\r\n\ Each\ line\ in\ the\ file\ consists\ of\ whitespace\ delimited\ inputs.\ Different\ sets\ of\ inputs\ occur\r\n\ on\ different\ lines.\ For\ example,\ a\ file\ with\ n\ lines\ would\ have\ n\ sets\ of\ inputs\ to\ be\ run\r\n\ through\ the\ network.\r\n\ \r\n\ @param\ filename\ the\ path\ of\ the\ file\ to\ be\ read\r\n
+comment7.params=x
+comment7.target=double\ activationFunction(double)
+comment7.text=\r\n\ This\ method\ applies\ an\ activation\ function\ to\ a\ given\ double.\ It\ can\ be\ changed\ to\ different\r\n\ activation\ functions,\ such\ as\ the\ sigmoid\ function\ f(x)\ \=\ 1/(1+Math.exp(-x))\ or\ the\ identity\ function\ f(x)\ \=\ x.\r\n\ \r\n\ @param\ x\ a\ double\ value\ which\ the\ activation\ function\ will\ be\ applied\ to\r\n
+comment8.params=args
+comment8.target=void\ main(java.lang.String[])
+comment8.text=\r\n\ The\ main\ method\ is\ used\ to\ instantiate\ a\ Perceptron\ object,\ read\ weights,\ read\ inputs\ (and\ run\ the\ network).\r\n\ \r\n\ @param\ args\ the\ supplied\ command-line\ arguments\r\n
+numComments=9
