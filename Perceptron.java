@@ -1,3 +1,4 @@
+  
 import java.io.*;
 import java.util.*;
 /**
@@ -176,12 +177,6 @@ public class Perceptron
     */
    private double[] runNetwork(double[] inputs)
    {
-      /*
-       * As this method runs, it will print out the different activation states. Therefore, the label "ACTIVATION STATES:"
-       * is first printed out to the terminal.
-       */
-      System.out.println("ACTIVATION STATES:");
-
       // Iterate a number of times equal to the number of nodes in the input layer
       for (int i = 0; i < layerSizes[0]; i++)
       {
@@ -189,11 +184,6 @@ public class Perceptron
           * Set the value of the activation state in the input layer to be the corresponding value in the inputs array
           */
          activations[0][i] = inputs[i];
-         /*
-          * Print out the value so the user can see it. Three spaces are placed in front to "indent" the activation
-          * from the "ACTIVATION STATES:" label above.
-          */
-         System.out.println("   a0" + i + ": " + activations[0][i]);
       } // for (int i = 0; i < layerSizes[0]; i++)
 
       // Iterate over the different activation layers, excluding the input layer
@@ -217,9 +207,6 @@ public class Perceptron
 
             // Apply the activation function to the new activation state by calling the activationFunction method
             activations[layer][node] = activationFunction(activations[layer][node]);
-
-            // Print out the new activation state of the current node (indented)
-            System.out.println("   a" + layer + node + ": " + activations[layer][node]);
          } // for (int node = 0; node < layerSizes[layer]; node++)
       } // for (int layer = 1; layer < layerSizes.length; layer++)
 
