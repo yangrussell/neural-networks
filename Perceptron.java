@@ -25,7 +25,12 @@ public class Perceptron
    private int[] layerSizes;       // A 1D array representing the sizes of each of the layers
    private double[][] activations; // A 2D array representing the activation states of the network
    private double[][][] weights;   // A 3D array representing the weights of the network
-
+   private double lambda;
+   private int maxIterations;
+   private double[][][] lastWeights;
+   private double lastError;
+   private static int ITERATIONS_INTERVAL = 10000;
+   
    /**
     * Constructor for the Perceptron class. Sets instance variables to values based on the parameters.
     * 
@@ -34,7 +39,7 @@ public class Perceptron
     *        and the length of the array is the number of hidden layers
     * @param outputNodes the number of output nodes in the network
     */
-   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes)
+   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations)
    {
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
@@ -67,6 +72,12 @@ public class Perceptron
  * we avoid using ragged arrays.
  */
       this.weights = new double[hiddenLayerNodes.length+1][maxNumNodes][maxNumNodes];
+      this.lastWeights = new double[hiddenLayerNodes.length+1][maxNumNodes][maxNumNodes];
+      this.lastError = Integer.MAX_VALUE;
+      
+      this.lambda = lambda;
+      
+      this.maxIterations = maxIterations;
    }
 
    /**
@@ -180,6 +191,9 @@ public class Perceptron
     */
    private double[] runNetwork(double[] inputs)
    {
+      // Call a method to set all the activation states back to 0
+      resetActivations();
+      
       // Iterate a number of times equal to the number of nodes in the input layer
       for (int i = 0; i < layerSizes[0]; i++)
       {
@@ -197,7 +211,7 @@ public class Perceptron
          {
             // Extract the current activations in the layer to the left of the node
             double[] prevActivations = activations[layer-1];
-
+            
             // The variable w is the left index for the weights
             for (int w = 0; w < layerSizes[layer-1]; w++)
             {
@@ -207,7 +221,7 @@ public class Perceptron
                // Multiply it by the corresponding current activation state to the left, and add that to the current node
                activations[layer][node]+=prevActivations[w]*prevWeight;
             } // for (int w = 0; w < layerSizes[layer-1]; w++)
-
+            
             // Apply the activation function to the new activation state by calling the activationFunction method
             activations[layer][node] = activationFunction(activations[layer][node]);
          } // for (int node = 0; node < layerSizes[layer]; node++)
@@ -221,9 +235,6 @@ public class Perceptron
  * the "to" index, is exclusive.
  */
       double[] outputs = Arrays.copyOfRange(activations[activations.length-1], 0, layerSizes[layerSizes.length-1]);
-
-      // Call a method to set all the activation states back to 0
-      resetActivations();
 
       // Return outputs, which was saved earlier
       return outputs;
@@ -256,8 +267,12 @@ public class Perceptron
     * 
     * @param filename the path of the file to be read
     */
-   private void readInputs(String filename)
+   private double[][] readInputs(String filename)
    {
+      
+      double[][] inputs = new double[4][2];
+      
+      int count = 0;
 /*
  * Use a try-catch construct.
  * It is possible that after splitting each line and attempting to convert each element into a double,
@@ -307,10 +322,14 @@ public class Perceptron
  * which prints out the activation states as the inputs travel through the network. Because runNetwork returns
  * an array of outputs, that array will then be printed out.
  */
-            System.out.println("OUTPUT(S): " + Arrays.toString(runNetwork(splitDouble)));
+
+            inputs[count] = splitDouble;
+            count++;
 
             // Print out a new line so when the code inside the while loop runs again, the output will be on a different line
             System.out.println();
+            
+            
          } // while (sc.hasNextLine())
 
          sc.close(); // Close the scanner
@@ -325,6 +344,8 @@ public class Perceptron
          // Throw RuntimeException if the file cannot be found
          throw new RuntimeException("The file could not be found");
       }
+      
+      return inputs;
    }
 
    /**
@@ -335,7 +356,204 @@ public class Perceptron
     */
    private static double activationFunction(double x)
    {
-      return x; // For now, just return the input
+      return 1/(1+Math.exp(-x));
+   }
+   
+   private static double activationFunctionDerivative(double x)
+   {
+      double sig = activationFunction(x);
+      return sig*(1.0-sig);
+   }
+   
+   private void updateWeights(double theoretical, double calculated)
+   {
+      //j0
+      for (int node = 0; node < layerSizes[1]; node++)
+      {
+         double deltaWeight = lambda*(theoretical-calculated)*activationFunctionDerivative(calculated)*activations[1][node];
+         weights[1][node][0] += deltaWeight;
+      }
+      //kj
+      for (int prev = 0; prev < layerSizes[0]; prev++)
+      {
+         for (int next = 0; next < layerSizes[1]; next++)
+         {
+            double deltaWeight = lambda*activations[0][prev]*activationFunctionDerivative(activations[1][next])*(theoretical-calculated)*activationFunctionDerivative(calculated)*weights[1][next][0];
+            weights[0][prev][next] += deltaWeight;
+         }
+      }
+         }
+   
+   private double calculateXOR(double[] input)
+   {
+      int first = (int) input[0];
+      int second = (int) input[1];
+      return (double) (first&second);
+   }
+   
+   /**
+    * The gradientDescent method minimizes the total error function by stepping the weights in the opposite direction
+    * of the gradient (the direction of steepest ascent).
+    * 
+    * @param trainingCases a 2D array where each 1D array is one set of training inputs
+    */
+   private void gradientDescent(double[][] trainingCases)
+   {
+      //System.out.println("CASES: " + Arrays.deepToString(trainingCases));
+      
+      int numIterations = 0;                                // initialize a counter to 0
+      double[] errorArr = new double[trainingCases.length]; // this array will store the errors
+      
+      double[] firstCase = trainingCases[0];
+      double firstTheoreticalOutput = calculateXOR(firstCase);
+      double[] firstOutputLayer = runNetwork(firstCase);
+      double firstActualOutput = firstOutputLayer[0];
+      double firstError = calculateError(firstTheoreticalOutput, firstActualOutput);
+      lastWeights = deepCopyWeights();
+      lastError = firstError;
+      
+      //updateWeights(firstTheoreticalOutput, firstActualOutput);
+      
+      
+      
+      while (numIterations <= maxIterations) // this will run until numIterations exceeds maxIterations
+      {
+         for (int i = 0; i < trainingCases.length; i++) // iterate over the 2D array of training cases
+         {
+            double[] myTrainingCase = trainingCases[i];              // extract a training case
+            double theoreticalOutput = calculateXOR(myTrainingCase); // find the theoretical output
+            double[] outputLayer = runNetwork(myTrainingCase);       // find the actual output layer
+            double actualOutput = outputLayer[0];                    // extract the actual output
+            
+            
+            updateWeights(theoreticalOutput, actualOutput);                // update the model weights
+            //System.out.println("WEIGHTS: " + Arrays.deepToString(weights));
+            
+            errorArr[i] = calculateError(theoreticalOutput, actualOutput); // calculate the error
+            // System.out.println("NEW ERROR: " + errorArr[i]);
+            // System.out.println("OLD ERROR: " + lastError);
+            
+            if (errorArr[i] < lastError)
+            {
+               lastError = errorArr[i];
+               lastWeights = deepCopyWeights();
+               System.out.println("LAMBDA UP");
+               lambda*=2.0;
+            }
+            else
+            {
+               weights = lastWeights;
+               lambda/=2.0;
+            }
+         }
+         
+         double totalError = calculateTotalError(errorArr); // calculate the total error
+
+         
+         if(numIterations % ITERATIONS_INTERVAL == 0) // if the number of iterations is a constant multiple of the ITERATIONS_INTERVAL
+         {
+            System.out.println(totalError); // print out the total error for the user to see
+         }         
+         
+         numIterations++;
+      } // while (numIterations <= maxIterations)
+   }
+   
+   private double[][][] deepCopyWeights()
+   {
+      double[][][] deepCopy = new double[weights.length][weights[0].length][weights[0][0].length];
+      for (int i = 0; i < weights.length; i++)
+      {
+         for (int j = 0; j < weights[0].length; j++)
+         {
+            for (int k = 0; k < weights[0][0].length; k++)
+            {
+               deepCopy[i][j][k] = weights[i][j][k];
+            }
+         }
+      }
+      
+      return deepCopy;
+   }
+   
+   private double calculateError(double theoreticalOutput, double actualOutput)
+   {
+      double difference = theoreticalOutput - actualOutput;
+      return 0.5 * difference * difference;
+   }
+   
+   private double calculateTotalError(double[] errorArr)
+   {
+      double total = 0.0;
+      for (double d : errorArr)
+      {
+         total += d*d;
+      }
+      return Math.sqrt(total);
+   }
+   
+   
+   private void configureNetwork(String filename)
+   {
+/*
+* Use a try-catch construct.
+* It is possible that a weight cannot be parsed as a double. In that case, catch the InputMismatchException
+* and throw a new RuntimeException with an appropriate error message.
+* 
+* It is also possible that the file path is incorrect. In that case, catch the FileNotFoundException
+* and throw a new RuntimeException with an appropriate error message.
+*/
+      try
+      {
+         File myFile = new File(filename); // Create a File object
+         Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
+
+/*
+ * The outermost for loop is going over each connectivity layer. The number of connectivity
+ * layers is the number of total layers minus 1.
+ */
+         for (int m = 0; m < layerSizes.length-1; m++)
+         {
+            // Use a for loop to iterate an amount of times equal to the number of activations in the previous layer
+            for (int prev = 0; prev < layerSizes[m]; prev++)
+            {
+               // Use a for loop to iterate an amount of times equal to the number of activations in the next layer
+               for (int next = 0; next < layerSizes[m+1]; next++)
+               {
+                  // If there are more items that the Scanner can read from the weights file
+                  if (sc.hasNext())
+                  {
+/*
+ * Read the next item as a double, and set it in the weights 3D array
+ * If the item cannot be parsed as a double, an InputMismatchException will be thrown and caught.
+ */
+                     weights[m][prev][next] = sc.nextDouble();
+                  } // if (sc.hasNext())
+               } // for (int next = 0; next < layerSizes[m+1]; next++)
+            } // for (int prev = 0; prev < layerSizes[m]; prev++)
+         } // for (int m = 0; m < layerSizes.length-1; m++)
+
+         sc.close(); // close the scanner object
+
+/*
+ * Print out the weights that were read from the file. For some reason, BlueJ starts the first print statement
+ * with a space, so print out a new line first to avoid that.
+ */
+         System.out.println();
+
+         // The Arrays.deepToString method prints a 2D array
+         System.out.println("WEIGHTS (read from file): " + Arrays.deepToString(weights));
+      } // try
+      catch (InputMismatchException i)
+      {
+         // Throw RuntimeException if one of the values cannot be parsed as a double
+         throw new RuntimeException("Could not parse a weight value as a double");
+      }
+      catch (FileNotFoundException f)
+      {
+         // Throw RuntimeException if the file cannot be found
+         throw new RuntimeException("The file could not be found");
+      }
    }
 
    /**
@@ -356,7 +574,7 @@ public class Perceptron
  * Like the number of hidden layers and hidden layer nodes, the number of input and output nodes
  * can be easily changed.
  */
-      Perceptron myPerp = new Perceptron(2, myHiddenLayerNodes, 1);
+      Perceptron myPerp = new Perceptron(2, myHiddenLayerNodes, 1, 0.1, 100000);
 
 /*
  * Read the weights from the specified file. In this example, the input passed to readWeights is a
@@ -369,6 +587,10 @@ public class Perceptron
  * In this example, the input passed to readWeights is a relative file path because files is a 
  * folder containing the project.
  */
-      myPerp.readInputs("files/inputs.txt");
+      double[][] inputs = myPerp.readInputs("files/inputs.txt");
+      
+      myPerp.gradientDescent(inputs);
+      
+      
    }
 }
