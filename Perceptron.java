@@ -22,13 +22,13 @@ import java.util.*;
 public class Perceptron
 {
    // instance variables  
-   private int[] layerSizes;       // A 1D array representing the sizes of each of the layers
-   private double[][] activations; // A 2D array representing the activation states of the network
-   private double[][][] weights;   // A 3D array representing the weights of the network
-   private double lambda;
-   private int maxIterations;
-   private double[][][] lastWeights;
-   private static int ITERATIONS_INTERVAL = 10000;
+   private int[] layerSizes;         // A 1D array representing the sizes of each of the layers
+   private double[][] activations;   // A 2D array representing the activation states of the network
+   private double[][][] weights;     // A 3D array representing the weights of the network
+   private double lambda;            // A value of the learning factor, lambda
+   private int maxIterations;        // A maximum number of iterations
+   private double[][][] lastWeights; // A 3D array that is a copy of the last weights. NOT IN USE but might be used later for adaptive lambda
+   private String booleanLogic;      // Either OR, AND, or XOR for the type of boolean logic being computed
 
    /**
     * Constructor for the Perceptron class. Sets instance variables to values based on the parameters.
@@ -38,7 +38,68 @@ public class Perceptron
     *        and the length of the array is the number of hidden layers
     * @param outputNodes the number of output nodes in the network
     */
-   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations)
+   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic)
+   {
+      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, booleanLogic);
+   }
+   
+   /**
+    * Default constructor for the Perceptron class. Sets instance variables to values based on the parameters.
+    * Uses configureCreateNetwork to read configuration file and use the relevant values for instance variables.
+    * 
+    * @param filename the name of the configuration file
+    */
+   public Perceptron(String filename)
+   {
+      /*
+       * Use a try-catch construct.
+       * 
+       * It is also possible that the file path is incorrect. In that case, catch the FileNotFoundException
+       * and throw a new RuntimeException with an appropriate error message.
+       */
+      try
+      {
+         File myFile = new File(filename); // Create a File object
+         Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
+
+         String firstLine = sc.nextLine();
+         int numInputNodes = Integer.parseInt(firstLine);
+         
+         String secondLine = sc.nextLine();
+         String[] splitSecondLine = secondLine.split(" "); // Split it by spaces
+         // Iterate over the String array
+         int[] hiddenLayerNodesArray = new int[splitSecondLine.length];
+         for (int i = 0; i < splitSecondLine.length; i++)
+         {
+            // Parse the element as a Double and put it into the corresponding slot in the double array
+            hiddenLayerNodesArray[i] = Integer.parseInt(splitSecondLine[i]);
+         }
+         
+         String thirdLine = sc.nextLine();
+         int numOutputNodes = Integer.parseInt(thirdLine);
+         
+         String fourthLine = sc.nextLine();
+         double lambda = Double.parseDouble(fourthLine);
+         
+         String fifthLine = sc.nextLine();
+         int maxIterations = Integer.parseInt(fifthLine);
+         
+         String booleanLogic = sc.nextLine();
+         
+         sc.close(); // close the scanner object
+
+         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, booleanLogic);
+         
+         
+      } // try
+      catch (FileNotFoundException f)
+      {
+         // Throw RuntimeException if the file cannot be found
+         throw new RuntimeException("The file could not be found");
+      }
+   }
+   
+   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic)
    {
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
@@ -76,6 +137,7 @@ public class Perceptron
       this.lambda = lambda;
 
       this.maxIterations = maxIterations;
+      this.booleanLogic = booleanLogic;
    }
 
    /**
@@ -312,7 +374,7 @@ public class Perceptron
             }
 
             // Print out the array of inputs using the Arrays.toString method
-            System.out.println("INPUT(S): " + Arrays.toString(splitString));
+            System.out.println("INPUTS: " + Arrays.toString(splitString));
 
             /*
              * Run the network on the current set of inputs and print out the outputs. Before the outputs
@@ -323,10 +385,6 @@ public class Perceptron
 
             inputs[count] = splitDouble;
             count++;
-
-            // Print out a new line so when the code inside the while loop runs again, the output will be on a different line
-            System.out.println();
-
          } // while (sc.hasNextLine())
          sc.close(); // Close the scanner
       } // try
@@ -408,11 +466,31 @@ public class Perceptron
       }
    }
 
-   private double calculateXOR(double[] input)
+   private double calculateTheoretical(double[] input)
    {
-      int first = (int) input[0];
-      int second = (int) input[1];
-      return (double) (first&second);
+      int first = (int) input[0];  // Extract first input
+      int second = (int) input[1]; // Extract second input
+      
+      int output; // Declare output
+      if (booleanLogic.equals("OR"))
+      {
+         output = (int) (first|second); // Bitwise or
+      }
+      else if (booleanLogic.equals("AND"))
+      {
+         output = (int) (first&second); // Bitwise and
+      }
+      else if (booleanLogic.equals("XOR"))
+      {
+         output = (int) (first^second); // Bitwise xor
+      }
+      else
+      {
+         // An invalid value for booleanLogic was used, so alert the user
+         throw new RuntimeException("Please use OR, AND, or XOR");
+      }
+      
+      return output;
    }
 
    /**
@@ -425,130 +503,67 @@ public class Perceptron
    {
       // Counter for the number of iterations
       int numIterations = 0;
-      // Initialize an array to store the four case errors
-      double[] errorArr = new double[trainingCases.length];
-
-      // // Extract the first input case
-      // double[] firstCase = trainingCases[0];
-
-      // // Find the THEORETICAL value 
-      // double firstTheoreticalOutput = calculateXOR(firstCase);
-
-      // // Run the network and get the array of ACTUAL outputs
-      // double[] firstOutputLayer = runNetwork(firstCase);
-
-      // // Extract the first output
-      // double firstActualOutput = firstOutputLayer[0];
-
-      // // Find the first case error
-      // double firstError = calculateError(firstTheoreticalOutput, firstActualOutput);
-      // System.out.println("theoretical: " + firstTheoreticalOutput);
-      // System.out.println("actual: " + firstActualOutput);
       
-      // Copy the current weights to lastWeights
+      // Initialize an array to store the current case errors
+      double[] errorArr = new double[trainingCases.length];
+      
+      // Copy the current weights to lastWeights, an instance variable
       lastWeights = deepCopyWeights(weights);
 
-      // Copy the current Error to lastError
+      // Initialize an array to store the previous case errors
       double[] lastError = new double[trainingCases.length];
       
-      for (int i = 0; i < trainingCases.length; i++)
+      for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
-         double[] myTrainingCase = trainingCases[i];
-         double theoreticalOutput = calculateXOR(myTrainingCase); // find the theoretical output
-         double[] outputLayer = runNetwork(myTrainingCase);       // find the actual output layer
-         double actualOutput = outputLayer[0];                    // extract the actual output
+         double[] myTrainingCase = trainingCases[i];                      // Extract one training case
+         double theoreticalOutput = calculateTheoretical(myTrainingCase); // Find the theoretical output
+         double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
+         double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
          
-         System.out.println(theoreticalOutput);
-         System.out.println(actualOutput);
-         
-         lastError[i] = Integer.MAX_VALUE; //calculateError(theoreticalOutput, actualOutput);
+         lastError[i] = calculateError(theoreticalOutput, actualOutput); // Set array element to be one case error
       }
-      
-      System.out.println("Initial Errors: " + Arrays.toString(lastError));
-      
 
-      while (numIterations <= maxIterations) // this will run until numIterations exceeds maxIterations
+      while (numIterations < maxIterations) // This will run until numIterations exceeds maxIterations
       {
-         for (int i = 0; i < trainingCases.length; i++) // iterate over the 2D array of training cases
+         for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
          {
-            double[] myTrainingCase = trainingCases[i];              // extract a training case
-            double theoreticalOutput = calculateXOR(myTrainingCase); // find the theoretical output
-            double[] outputLayer = runNetwork(myTrainingCase);       // find the actual output layer
-            double actualOutput = outputLayer[0];                    // extract the actual output
+            double[] myTrainingCase = trainingCases[i];                      // Extract one training case
+            double theoreticalOutput = calculateTheoretical(myTrainingCase); // Find the theoretical output
+            double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
+            double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
 
-            updateWeights(theoreticalOutput, actualOutput);          // update the model weights
+            updateWeights(theoreticalOutput, actualOutput); // Update the model weights according to the design document
             
-            errorArr[i] = calculateError(theoreticalOutput, actualOutput);
-            //System.out.println("CASE ERROR: " + i + " is " + errorArr[i]);
-            
-            // System.out.println("NEW ERROR: " + errorArr[i]);
-            // // System.out.println("OLD ERROR: " + lastError);
-            // // System.out.println();
-            
-            // System.out.println("LAST ERROR: " + lastError[i]);
-            // System.out.println("NEW ERROR: " + errorArr[i]);
-            // System.out.println();
-            
-            
-            
-            // if (errorArr[i] < lastError[i]) // The error has decreased from last time
-            // {
-               // //System.out.println("LAMBDA UP");
-               // // Save the current case error to lastError
-               // lastError[i] = errorArr[i];
-
-               // // Copy the current weights to lastWeights
-               // lastWeights = deepCopyWeights(weights);
-
-               // // Multiply lambda by 1.01
-               // if (lambda <= 1.5)
-               // {
-                  // lambda*=1.01;
-               // }
-            // }
-            // else
-            // {
-               // //System.out.println("LAMBDA DOWN");
-
-               // // Roll back the weights
-               
-               // weights = deepCopyWeights(lastWeights);
-               
-
-               // // Make lambda smaller
-               // lambda/=1.01;
-            // }
-            //Print out lambda for debugging
-            //System.out.println("LAMBDA:" + lambda);
-            // System.out.println("WEIGHTS: " + Arrays.deepToString(weights));
-            // System.out.println("LAST: " + Arrays.toString(lastError));
-            // System.out.println("NEW: " + Arrays.toString(errorArr));
+            errorArr[i] = calculateError(theoreticalOutput, actualOutput); // Save the new error into an array element
          }
-
-         // Find the total error of the quadruplet of training cases
-         double totalError = calculateTotalError(errorArr); // calculate the total error
-         
-         // Sometimes print out the total error
-         if(numIterations % ITERATIONS_INTERVAL == 0) // if the number of iterations is a constant multiple of the ITERATIONS_INTERVAL
-         {
-            System.out.println(totalError); // print out the total error for the user to see
-         }         
 
          // Increment iteration counter
          numIterations++;
       } // while (numIterations <= maxIterations)
-      double totalError = calculateTotalError(errorArr); // calculate the total error
-      System.out.println("FINAL TOTAL ERROR: " + totalError);
       
-      // for (int i = 0; i < trainingCases.length; i++)
-      // {
-         // errorArr[i] = calculateError(calculateXOR(trainingCases[i]), runNetwork(trainingCases[i])[0]);
-      // }
-      // System.out.println(calculateTotalError(errorArr));
+      double totalError = calculateTotalError(errorArr);                      // Calculate the total error
+      System.out.println("NUMBER OF ITERATIONS: " + numIterations);           // Print out the number of iterations
+      System.out.println("FINAL TOTAL ERROR: " + totalError);                 // Print out the final total error
+      System.out.println("LAMBDA (FIXED): " + lambda);                        // Print out the lambda value
+      System.out.println("INPUTS, THEORETICAL OUTPUTS, AND ACTUAL OUTPUTS:"); // Print out the label for the inputs, theoretical and actual outputs
+      
+      for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
+      {
+         double[] myTrainingCase = trainingCases[i];                      // Extract one training case
+         double theoreticalOutput = calculateTheoretical(myTrainingCase); // Find the theoretical output
+         double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
+         double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
+         
+         System.out.print("INPUTS: " + Arrays.toString(myTrainingCase) + " "); // Print out the inputs for a case
+         System.out.print("THEORETICAL OUTPUT: " + theoreticalOutput + " ");   // Print out the theoretical output for a case
+         System.out.println("ACTUAL OUTPUT: " + actualOutput);                 // Print out the actual output for a case
+      }
    }
 
    /**
     * Makes a deep copy of the current weights 3D array and returns it
+    * 
+    * @param weights a 3D array of weights to be copied and returned
     */
    private double[][][] deepCopyWeights(double[][][] weights)
    {
@@ -567,83 +582,31 @@ public class Perceptron
       return deepCopy;
    }
 
+   /**
+    * Calculates the error between a theoretical and actual output according to the formula in the design docment
+    * 
+    * @param theoreticalOutput the expected value of output
+    * @param actualOutput the actual value of the output
+    */
    private double calculateError(double theoreticalOutput, double actualOutput)
    {
-      double difference = theoreticalOutput - actualOutput;
-      return 0.5 * difference * difference;
+      double difference = theoreticalOutput - actualOutput; // Find the difference between the theoretical and actual outputs
+      return 0.5 * difference * difference;                 // Return half the difference squared
    }
 
+   /**
+    * Calculates the total error in an array of case errors
+    * 
+    * @param errorArr an array where each element is a case error
+    */
    private double calculateTotalError(double[] errorArr)
    {
-      double total = 0.0;
-      for (double d : errorArr)
+      double total = 0.0;       // This will hold the total
+      for (double d : errorArr) // Use for each loop to iterate over the case error array
       {
-         total += d*d;
+         total += d*d; // Add the square of the case error to the running total
       }
-      return Math.sqrt(total);
-   }
-
-   private void configureNetwork(String filename)
-   {
-      /*
-       * Use a try-catch construct.
-       * It is possible that a weight cannot be parsed as a double. In that case, catch the InputMismatchException
-       * and throw a new RuntimeException with an appropriate error message.
-       * 
-       * It is also possible that the file path is incorrect. In that case, catch the FileNotFoundException
-       * and throw a new RuntimeException with an appropriate error message.
-       */
-      try
-      {
-         File myFile = new File(filename); // Create a File object
-         Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
-
-         /*
-          * The outermost for loop is going over each connectivity layer. The number of connectivity
-          * layers is the number of total layers minus 1.
-          */
-         for (int m = 0; m < layerSizes.length-1; m++)
-         {
-            // Use a for loop to iterate an amount of times equal to the number of activations in the previous layer
-            for (int prev = 0; prev < layerSizes[m]; prev++)
-            {
-               // Use a for loop to iterate an amount of times equal to the number of activations in the next layer
-               for (int next = 0; next < layerSizes[m+1]; next++)
-               {
-                  // If there are more items that the Scanner can read from the weights file
-                  if (sc.hasNext())
-                  {
-                     /*
-                      * Read the next item as a double, and set it in the weights 3D array
-                      * If the item cannot be parsed as a double, an InputMismatchException will be thrown and caught.
-                      */
-                     weights[m][prev][next] = sc.nextDouble();
-                  } // if (sc.hasNext())
-               } // for (int next = 0; next < layerSizes[m+1]; next++)
-            } // for (int prev = 0; prev < layerSizes[m]; prev++)
-         } // for (int m = 0; m < layerSizes.length-1; m++)
-
-         sc.close(); // close the scanner object
-
-         /*
-          * Print out the weights that were read from the file. For some reason, BlueJ starts the first print statement
-          * with a space, so print out a new line first to avoid that.
-          */
-         System.out.println();
-
-         // The Arrays.deepToString method prints a 2D array
-         System.out.println("WEIGHTS (read from file): " + Arrays.deepToString(weights));
-      } // try
-      catch (InputMismatchException i)
-      {
-         // Throw RuntimeException if one of the values cannot be parsed as a double
-         throw new RuntimeException("Could not parse a weight value as a double");
-      }
-      catch (FileNotFoundException f)
-      {
-         // Throw RuntimeException if the file cannot be found
-         throw new RuntimeException("The file could not be found");
-      }
+      return Math.sqrt(total); // Return the square root of the total
    }
 
    /**
@@ -653,18 +616,9 @@ public class Perceptron
     */
    public static void main(String[] args)
    {
-      /*
-       * The network shall have 1 hidden layer with 2 nodes in it. This can be changed to any number of layers
-       * and any number of nodes for each layer in the hidden layer nodes array.
-       */
-      int[] myHiddenLayerNodes = {2};
-
-      /*
-       * Create a Perceptron object with 2 input nodes, 1 hidden layer with 2 nodes, and 1 output node.
-       * Like the number of hidden layers and hidden layer nodes, the number of input and output nodes
-       * can be easily changed.
-       */
-      Perceptron myPerp = new Perceptron(2, myHiddenLayerNodes, 1, 0.01, 100000);
+      // Use the constructor which takes in a configuration file 
+      Perceptron myPerp = new Perceptron("files/config.txt");
+      
       /*
        * Read the weights from the specified file. In this example, the input passed to readWeights is a
        * relative file path because files is a folder containing the project.
