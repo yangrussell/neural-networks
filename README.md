@@ -3,7 +3,7 @@ Implementation of a feedforward multilayer perceptron from first principles in J
 
 # Usage
 1. Download files and open in an IDE
-2. Alter the config.txt so it is in the following format:
+2. Alter the config.txt so it is in the following format:<br>
 \# of input nodes<br>
 \# of hidden layer nodes<br>
 \# of output nodes<br>
