@@ -41,7 +41,7 @@ public class Perceptron
    private double[] theoreticalOutputs;      // Either OR, AND, or XOR for the type of boolean logic being computed
    private double lowerBound;        // Lower bound on the random weights
    private double upperBound;        // Upper bound on the random weights
-   private static final double LAMBDA_MULTIPLIER = 0;
+   private static final double LAMBDA_MULTIPLIER = 1.0;
    
    /**
     * Constructor for the Perceptron class. Sets instance variables to values based on the parameters.
@@ -589,7 +589,7 @@ public class Perceptron
 
             errorArr[i] = calculateError(theoreticalOutput, actualOutput); // Save the new error into an array element
             
-            //lambda*=LAMBDA_MULTIPLIER;
+            lambda*=LAMBDA_MULTIPLIER;
          }
 
          // Increment iteration counter
