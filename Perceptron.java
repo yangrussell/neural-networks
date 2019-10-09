@@ -35,13 +35,14 @@ public class Perceptron
    private int[] layerSizes;         // A 1D array representing the sizes of each of the layers
    private double[][] activations;   // A 2D array representing the activation states of the network
    private double[][][] weights;     // A 3D array representing the weights of the network
-   private double lambda;            // A value of the learning factor, lambda
+   private double lambda;            // A value of lambda
    private int maxIterations;        // A maximum number of iterations
    private double[][][] lastWeights; // A 3D array that is a copy of the last weights. NOT IN USE but might be used later for adaptive lambda
-   private String booleanLogic;      // Either OR, AND, or XOR for the type of boolean logic being computed
+   private double[] theoreticalOutputs;      // Either OR, AND, or XOR for the type of boolean logic being computed
    private double lowerBound;        // Lower bound on the random weights
    private double upperBound;        // Upper bound on the random weights
-
+   private static final double LAMBDA_MULTIPLIER = 0;
+   
    /**
     * Constructor for the Perceptron class. Sets instance variables to values based on the parameters.
     * 
@@ -97,7 +98,7 @@ public class Perceptron
          String fifthLine = sc.nextLine();                // Get next scanner line
          int maxIterations = Integer.parseInt(fifthLine); // Get the max number of iterations
 
-         String booleanLogic = sc.nextLine(); // Get the type of boolean logic used
+         String outputsFile = sc.nextLine(); // Get the type of boolean logic used
          
          String seventhLine = sc.nextLine();                // Get next scanner line
          String[] bounds = seventhLine.split(" ");          // Split it by spaces
@@ -107,7 +108,7 @@ public class Perceptron
          sc.close(); // close the scanner object
 
          // Call the setInstanceVariables method to set the instance variables to the values read from the configuration file
-         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, booleanLogic, lowerBound, upperBound);
+         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, outputsFile, lowerBound, upperBound);
 
       } // try
       catch (FileNotFoundException f)
@@ -117,7 +118,7 @@ public class Perceptron
       }
    }
 
-   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic, double lowerBound, double upperBound)
+   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String outputsFile, double lowerBound, double upperBound)
    {
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
@@ -155,9 +156,45 @@ public class Perceptron
       this.lambda = lambda;
 
       this.maxIterations = maxIterations;
-      this.booleanLogic = booleanLogic;
+      this.theoreticalOutputs = readOutputs(outputsFile);
       this.lowerBound = lowerBound;
       this.upperBound = upperBound;
+   }
+   
+   private double[] readOutputs(String outputsFile)
+   {
+      double[] outputs;
+      try
+      {
+         File myFile = new File(outputsFile); // Create a File object
+         Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
+         
+         String firstLine = sc.nextLine();
+         int numCases = Integer.parseInt(firstLine);
+         outputs = new double[numCases];
+
+         int index = 0;
+         
+         // Keep reading while the scanner can read another line
+         while (sc.hasNextLine())
+         {
+            String line = sc.nextLine();            // Extract the next line
+            outputs[index] = Double.parseDouble(line);
+            index++;
+         } // while (sc.hasNextLine())
+         sc.close(); // Close the scanner
+      } // try
+      catch (NumberFormatException n)
+      {
+         // Throw RuntimeException if one of the values cannot be parsed as a double
+         throw new RuntimeException("Could not parse a weight value as a double");
+      }
+      catch (FileNotFoundException f)
+      {
+         // Throw RuntimeException if the file cannot be found
+         throw new RuntimeException("The file could not be found");
+      }
+      return outputs;
    }
 
    /**
@@ -509,33 +546,6 @@ public class Perceptron
       }
    }
 
-   private double calculateTheoretical(double[] input)
-   {
-      int first = (int) input[0];  // Extract first input
-      int second = (int) input[1]; // Extract second input
-
-      int output; // Declare output
-      if (booleanLogic.equals("OR"))
-      {
-         output = (int) (first|second); // Bitwise or
-      }
-      else if (booleanLogic.equals("AND"))
-      {
-         output = (int) (first&second); // Bitwise and
-      }
-      else if (booleanLogic.equals("XOR"))
-      {
-         output = (int) (first^second); // Bitwise xor
-      }
-      else
-      {
-         // An invalid value for booleanLogic was used, so alert the user
-         throw new RuntimeException("Please use OR, AND, or XOR");
-      }
-
-      return output;
-   }
-
    /**
     * The gradientDescent method minimizes the total error function by stepping the weights in the opposite direction
     * of the gradient (the direction of steepest ascent).
@@ -559,7 +569,7 @@ public class Perceptron
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
          double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-         double theoreticalOutput = calculateTheoretical(myTrainingCase); // Find the theoretical output
+         double theoreticalOutput = theoreticalOutputs[i]; // Find the theoretical output
          double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
          double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
 
@@ -571,13 +581,15 @@ public class Perceptron
          for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
          {
             double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-            double theoreticalOutput = calculateTheoretical(myTrainingCase); // Find the theoretical output
+            double theoreticalOutput = theoreticalOutputs[i]; // Find the theoretical output
             double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
             double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
 
             updateWeights(theoreticalOutput, actualOutput); // Update the model weights according to the design document
 
             errorArr[i] = calculateError(theoreticalOutput, actualOutput); // Save the new error into an array element
+            
+            //lambda*=LAMBDA_MULTIPLIER;
          }
 
          // Increment iteration counter
@@ -593,7 +605,7 @@ public class Perceptron
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
          double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-         double theoreticalOutput = calculateTheoretical(myTrainingCase); // Find the theoretical output
+         double theoreticalOutput = theoreticalOutputs[i]; // Find the theoretical output
          double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
          double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
 
@@ -674,7 +686,7 @@ public class Perceptron
        * folder containing the project.
        */
       double[][] inputs = myPerp.readInputs("files/inputs.txt");
-
+      
       //System.out.println(Arrays.toString(myPerp.runNetwork(inputs[1])));
 
       myPerp.gradientDescent(inputs);
