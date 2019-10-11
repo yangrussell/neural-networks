@@ -3,5 +3,5 @@
 1
 0.5
 100000
-files/or.txt
+files/xor.txt
 -1.0 1.0

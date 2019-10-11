@@ -167,7 +167,7 @@ public class Perceptron
       try
       {
          File myFile = new File(outputsFile); // Create a File object
-         Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
+         Scanner sc = new Scanner(myFile);    // Create a Scanner to scan the File object
          
          String firstLine = sc.nextLine();
          int numCases = Integer.parseInt(firstLine);
@@ -578,18 +578,21 @@ public class Perceptron
 
       while (numIterations < maxIterations) // This will run until numIterations exceeds maxIterations
       {
-         for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
+         for (int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
          {
-            double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-            double theoreticalOutput = theoreticalOutputs[i]; // Find the theoretical output
-            double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
-            double actualOutput = outputLayer[0];                            // Extract the first element of the output layer
-
-            updateWeights(theoreticalOutput, actualOutput); // Update the model weights according to the design document
-
-            errorArr[i] = calculateError(theoreticalOutput, actualOutput); // Save the new error into an array element
-            
-            lambda*=LAMBDA_MULTIPLIER;
+            for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
+            {
+               double[] myTrainingCase = trainingCases[i];                      // Extract one training case
+               double theoreticalOutput = theoreticalOutputs[i]; // Find the theoretical output
+               double[] outputLayer = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
+               double actualOutput = outputLayer[outputNode];                            // Extract the first element of the output layer
+   
+               updateWeights(theoreticalOutput, actualOutput); // Update the model weights according to the design document
+   
+               errorArr[i] = calculateError(theoreticalOutput, actualOutput); // Save the new error into an array element
+               
+               lambda*=LAMBDA_MULTIPLIER;
+            }
          }
 
          // Increment iteration counter
