@@ -32,33 +32,53 @@ import java.util.*;
 public class Perceptron
 {
    // instance variables  
-   private int[] layerSizes;         // A 1D array representing the sizes of each of the layers
-   private double[][] activations;   // A 2D array representing the activation states of the network
-   private double[][][] weights;     // A 3D array representing the weights of the network
-   private double lambda;            // A value of lambda
-   private int maxIterations;        // A maximum number of iterations
-   private double[][] theoreticalOutputs;      // Either OR, AND, or XOR for the type of boolean logic being computed
-   private double lowerBound;        // Lower bound on the random weights
-   private double upperBound;        // Upper bound on the random weights
-   private static final double LAMBDA_MULTIPLIER = 1.0;
+   private int[] layerSizes;                            // A 1D array representing the sizes of each of the layers
+   private double[][] activations;                      // A 2D array representing the activation states of the network
+   private double[][][] weights;                        // A 3D array representing the weights of the network
+   private double lambda;                               // A value of lambda, the learning factor
+   private int maxIterations;                           // A maximum number of iterations that the network will train for
+   private double[][] theoreticalOutputs;               // A 2D array - each row is a array of outputs and each column corresponds to a set of inputs
+   private double lowerBound;                           // Lower bound on the random weights
+   private double upperBound;                           // Upper bound on the random weights
+   private static final double LAMBDA_MULTIPLIER = 1.0; // A value to multiply lambda by (not in use now as the network is not adaptive)
 
    /**
-    * Constructor for the Perceptron class. Sets instance variables to values based on the parameters.
+    * Constructor for the Perceptron class with parameters. Sets instance variables to values based on the parameters, using the
+    * helper method setInstanceVariables.
     * 
     * @param inputNodes the number of nodes that the network uses to take in inputs
     * @param hiddenLayerNodes an array where each element is the number of nodes in a hidden layer of the network,
     *        and the length of the array is the number of hidden layers
+    * @param lambda a value of lambda, the learning factor
+    * @param maxIterations the maximum number of iterations the network will be trained for
+    * @param outputsFile a filename where the file contains the theoretical outputs to be read. The
+    *        first line consists of 2 space separated integers, the first is the number of array items in
+    *        each row that follow, and the second is the number of rows. Each row in the file after
+    *        the first line corresponds to a set of inputs. Within each row, the elements are space-separated
+    *        and the first element is the first output of the network, the second element is the second
+    *        output of the network, etc. For example, for a neural network that is doing multiple outputs
+    *        and is supposed to output OR, AND, and XOR in the first, second, and third outputs, the input
+    *        cases would be all the different combinations of two boolean inputs: (0,0); (0,1); (1,0); and (1,1).
+    *        Thus, taking the first column to be the OR outputs, the second column to be the AND outputs, and
+    *        the third column to be the XOR outputs, the outputsFile would look like this:
+    *        3 4
+    *        0 0 0
+    *        1 0 1
+    *        1 0 1
+    *        1 1 0
+    * @param lowerBound a lower bound (inclusive) on the values of the randomly generated initial weights
+    * @param upperBound an upper bound (exclusive) on the values of the randomly generated initial weights
     * @param outputNodes the number of output nodes in the network
     */
-   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic, double lowerBound, double UpperBound)
+   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String outputsFile, double lowerBound, double upperBound)
    {
       // Call the setInstanceVariables method to set the instance variables to the passed values
-      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, booleanLogic, lowerBound, upperBound);
+      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, outputsFile, lowerBound, upperBound);
    }
 
    /**
-    * Default constructor for the Perceptron class. Sets instance variables to values based on the parameters.
-    * Uses configureCreateNetwork to read configuration file and use the relevant values for instance variables.
+    * Constructor for the Perceptron class that reads from a given configuration file. Sets instance variables to values
+    * based on the read values, using the helper method setInstanceVariables.
     * 
     * @param filename the name of the configuration file
     */
@@ -67,42 +87,51 @@ public class Perceptron
       /*
        * Use a try-catch construct.
        * 
-       * It is also possible that the file path is incorrect. In that case, catch the FileNotFoundException
-       * and throw a new RuntimeException with an appropriate error message.
+       * It is possible that some contents of the file are not the type they should be (ex: weights cannot be parsed
+       * to double). In that case, catch the NumberFormatException and throw a RuntimeException with a relevant message
+       * for the user.
+       * 
+       * It is also possible that the file is misspecified and cannot be read. In that case, catch the
+       * FileNotFoundException and throw a RuntimeException with a relevant message for the user.
+       * 
+       * It is also possible that when the space-separated values are split into an array and the array is read
+       * from, the array index will be accessed out of bounds. In that case, catch the ArrayIndexOutOfBoundsException
+       * and throw a RuntimeException with a relevant message for the user.
        */
       try
       {
          File myFile = new File(filename); // Create a File object
          Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
 
-         String firstLine = sc.nextLine();                // Get next scanner line
-         int numInputNodes = Integer.parseInt(firstLine); // Get number of input nodes
-
-         String secondLine = sc.nextLine();                // Get next scanner line
-         String[] splitSecondLine = secondLine.split(" "); // Split it by spaces
-         // Iterate over the String array
-         int[] hiddenLayerNodesArray = new int[splitSecondLine.length];
-         for (int i = 0; i < splitSecondLine.length; i++)
+         String firstLine = sc.nextLine();                 // Get first scanner line
+         int numInputNodes = Integer.parseInt(firstLine);  // Get number of input nodes by parsing the first line to an Integer
+         
+         String secondLine = sc.nextLine();                // Get second scanner line
+         String[] splitSecondLine = secondLine.split(" "); // Split the second scanner line by spaces and save it to an array of Strings
+         
+         int[] hiddenLayerNodesArray = new int[splitSecondLine.length]; // New array to store the # of nodes in each hidden layer
+    
+         for (int i = 0; i < splitSecondLine.length; i++) // Iterate over the splitSecondLine array
          {
-            // Parse the element as a Double and put it into the corresponding slot in the double array
+            // Parse the current element as an Integer and put it into the corresponding slot in the hiddenLayerNodes array
             hiddenLayerNodesArray[i] = Integer.parseInt(splitSecondLine[i]);
          }
 
-         String thirdLine = sc.nextLine();                 // Get next scanner line
-         int numOutputNodes = Integer.parseInt(thirdLine); // Get number of output nodes
+         String thirdLine = sc.nextLine();                  // Get third scanner line
+         int numOutputNodes = Integer.parseInt(thirdLine);  // Get number of output nodes by parsing the third line to an Integer
 
-         String fourthLine = sc.nextLine();              // Get next scanner line
-         double lambda = Double.parseDouble(fourthLine); // Get lambda
+         String fourthLine = sc.nextLine();                 // Get fourth scanner line
+         double lambda = Double.parseDouble(fourthLine);    // Get lambda by parsing the fourth line to a Double
 
-         String fifthLine = sc.nextLine();                // Get next scanner line
-         int maxIterations = Integer.parseInt(fifthLine); // Get the max number of iterations
+         String fifthLine = sc.nextLine();                  // Get fifth scanner line
+         int maxIterations = Integer.parseInt(fifthLine);   // Get the max number of iterations by parsing the fifth line to an Integer
 
-         String outputsFile = sc.nextLine(); // Get the type of boolean logic used
+         String outputsFile = sc.nextLine();                // Get the filename of the outputsFile (the sixth line)
 
-         String seventhLine = sc.nextLine();                // Get next scanner line
-         String[] bounds = seventhLine.split(" ");          // Split it by spaces
-         double lowerBound = Double.parseDouble(bounds[0]); // Get lower bound
-         double upperBound = Double.parseDouble(bounds[1]); // Get upper bound
+         String seventhLine = sc.nextLine();                // Get seventh scanner line
+         String[] bounds = seventhLine.split(" ");          // Split the seventh scanner line by spaces and save it to an array of Strings
+         double lowerBound = Double.parseDouble(bounds[0]); // Get lower bound by parsing the first element of bounds to a Double
+         double upperBound = Double.parseDouble(bounds[1]); // Get upper bound by parsing the second element of bounds to a Double
 
          sc.close(); // close the scanner object
 
@@ -110,10 +139,19 @@ public class Perceptron
          setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, outputsFile, lowerBound, upperBound);
 
       } // try
+      catch (NumberFormatException n)
+      {
+         // Throw RuntimeException if one of the values cannot be parsed as a double
+         throw new RuntimeException("Could not parse a weight value as a double");
+      }
       catch (FileNotFoundException f)
       {
          // Throw RuntimeException if the file cannot be found
          throw new RuntimeException("The file could not be found");
+      }
+      catch (ArrayIndexOutOfBoundsException a)
+      {
+         throw new RuntimeException("Array index out of bounds. Please check the space-separated values.");
       }
    }
 
