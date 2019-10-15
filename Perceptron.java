@@ -7,9 +7,10 @@ import java.util.*;
  * the network.
  * 
  * Methods:
- * public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic)
+ * public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic, double lowerBound, double UpperBound)
  * public Perceptron(String filename)
- * private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String booleanLogic)
+ * private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String outputsFile, double lowerBound, double upperBound)
+ * private double[][] readOutputs(String outputsFile)
  * private static int arrayMax(int[] arr)
  * private void readWeights(String filename)
  * private double[] runNetwork(double[] inputs)
@@ -18,11 +19,10 @@ import java.util.*;
  * private static double activationFunction(double x)
  * private static double activationFunctionDerivative(double x)
  * private static double inverseActivation(double x)
- * private void updateWeights(double theoretical, double calculated)
- * private double calculateTheoretical(double[] input)
+ * private void updateWeights(double[] theoretical, double[] calculated)
  * private void gradientDescent(double[][] trainingCases)
  * private double[][][] deepCopyWeights(double[][][] weights)
- * private double calculateError(double theoreticalOutput, double actualOutput)
+ * private double calculateError(double[] theoreticalOutputs, double[] actualOutputs)
  * private double calculateTotalError(double[] errorArr)
  * public static void main(String[] args)
  * 
@@ -37,7 +37,6 @@ public class Perceptron
    private double[][][] weights;     // A 3D array representing the weights of the network
    private double lambda;            // A value of lambda
    private int maxIterations;        // A maximum number of iterations
-   private double[][][] lastWeights; // A 3D array that is a copy of the last weights. NOT IN USE but might be used later for adaptive lambda
    private double[][] theoreticalOutputs;      // Either OR, AND, or XOR for the type of boolean logic being computed
    private double lowerBound;        // Lower bound on the random weights
    private double upperBound;        // Upper bound on the random weights
@@ -151,7 +150,6 @@ public class Perceptron
        * we avoid using ragged arrays.
        */
       this.weights = new double[hiddenLayerNodes.length+1][maxNumNodes][maxNumNodes];
-      this.lastWeights = new double[hiddenLayerNodes.length+1][maxNumNodes][maxNumNodes];
 
       this.lambda = lambda;
 
@@ -582,7 +580,6 @@ public class Perceptron
       double[] errorArr = new double[trainingCases.length];
 
       // Copy the current weights to lastWeights, an instance variable
-      lastWeights = deepCopyWeights(weights);
 
       // Initialize an array to store the previous case errors
       double[][] lastError = new double[trainingCases.length][layerSizes[layerSizes.length-1]];
