@@ -49,8 +49,15 @@ public class Perceptron
     * @param inputNodes the number of nodes that the network uses to take in inputs
     * @param hiddenLayerNodes an array where each element is the number of nodes in a hidden layer of the network,
     *        and the length of the array is the number of hidden layers
+    * @param outputNodes the number of nodes in the output layer
     * @param lambda a value of lambda, the learning factor
     * @param maxIterations the maximum number of iterations the network will be trained for
+    * @param weightsFile a path to a file of weights or the word "randomize". If weightsFile is "randomize", weights will
+    *        be generated according to a specified lower and upper bound. If the weightsFile is to a file of weights,
+    *        the weights are whitespace delimited and each new line represents a different value for the connectivity layer index (m).
+    *        For example, for a 2-2-1 network, the text file will be structured as follows: 
+    *        w000 w001 w010 w011
+    *        w100 w110
     * @param outputsFile a filename where the file contains the theoretical outputs to be read. The
     *        first line consists of 2 space separated integers, the first is the number of array items in
     *        each row that follow, and the second is the number of rows. Each row in the file after
@@ -70,10 +77,10 @@ public class Perceptron
     * @param upperBound an upper bound (exclusive) on the values of the randomly generated initial weights
     * @param outputNodes the number of output nodes in the network
     */
-   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String outputsFile, double lowerBound, double upperBound)
+   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String weightsFile, String outputsFile, double lowerBound, double upperBound)
    {
       // Call the setInstanceVariables method to set the instance variables to the passed values
-      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, outputsFile, lowerBound, upperBound);
+      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, weightsFile, outputsFile, lowerBound, upperBound);
    }
 
    /**
@@ -81,6 +88,11 @@ public class Perceptron
     * based on the read values, using the helper method setInstanceVariables.
     * 
     * @param filename the name of the configuration file
+    * 
+    *               
+    * Special considerations: this method performs exception catching to catch an NumberFormatException, FileNotFoundException,
+    * or ArrayIndexOutOfBoundsException that may be thrown. It will throw a RuntimeException with a relevant message
+    * if either of those occurs
     */
    public Perceptron(String filename)
    {
@@ -105,12 +117,12 @@ public class Perceptron
 
          String firstLine = sc.nextLine();                 // Get first scanner line
          int numInputNodes = Integer.parseInt(firstLine);  // Get number of input nodes by parsing the first line to an Integer
-         
+
          String secondLine = sc.nextLine();                // Get second scanner line
          String[] splitSecondLine = secondLine.split(" "); // Split the second scanner line by spaces and save it to an array of Strings
-         
+
          int[] hiddenLayerNodesArray = new int[splitSecondLine.length]; // New array to store the # of nodes in each hidden layer
-    
+
          for (int i = 0; i < splitSecondLine.length; i++) // Iterate over the splitSecondLine array
          {
             // Parse the current element as an Integer and put it into the corresponding slot in the hiddenLayerNodes array
@@ -126,19 +138,21 @@ public class Perceptron
          String fifthLine = sc.nextLine();                  // Get fifth scanner line
          int maxIterations = Integer.parseInt(fifthLine);   // Get the max number of iterations by parsing the fifth line to an Integer
 
-         String outputsFile = sc.nextLine();                // Get the filename of the outputsFile (the sixth line)
+         String weightsFile = sc.nextLine();                // Get the filename (or the word "randomize") of the weights (the sixth line)
+         
+         String outputsFile = sc.nextLine();                // Get the filename of the outputsFile (the seventh line)
 
-         String seventhLine = sc.nextLine();                // Get seventh scanner line
-         String[] bounds = seventhLine.split(" ");          // Split the seventh scanner line by spaces and save it to an array of Strings
+         String eighthLine = sc.nextLine();                 // Get eighth scanner line
+         String[] bounds = eighthLine.split(" ");           // Split the eighth scanner line by spaces and save it to an array of Strings
          double lowerBound = Double.parseDouble(bounds[0]); // Get lower bound by parsing the first element of bounds to a Double
          double upperBound = Double.parseDouble(bounds[1]); // Get upper bound by parsing the second element of bounds to a Double
 
          sc.close(); // close the scanner object
 
          // Call the setInstanceVariables method to set the instance variables to the values read from the configuration file
-         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, outputsFile, lowerBound, upperBound);
+         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, weightsFile, outputsFile, lowerBound, upperBound);
 
-      } // try
+      } //try
       catch (NumberFormatException n)
       {
          // Throw RuntimeException if one of the values cannot be parsed as a double
@@ -151,11 +165,45 @@ public class Perceptron
       }
       catch (ArrayIndexOutOfBoundsException a)
       {
-         throw new RuntimeException("Array index out of bounds. Please check the space-separated values.");
+         // Throw RuntimeExceptioon if an array index is out of bounds
+         throw new RuntimeException("Array index out of bounds. Please check the space-separated values in the configuration file");
       }
    }
 
-   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String outputsFile, double lowerBound, double upperBound)
+   /**
+    * A helper method that sets instance variable values based on values passed from either of the constructors.
+    * @param inputNodes the number of nodes that the network uses to take in inputs
+    * @param hiddenLayerNodes an array where each element is the number of nodes in a hidden layer of the network,
+    *        and the length of the array is the number of hidden layers
+    * @param outputNodes the number of nodes in the output layer
+    * @param lambda a value of lambda, the learning factor
+    * @param maxIterations the maximum number of iterations the network will be trained for
+    * @param weightsFile a path to a file of weights or the word "randomize". If weightsFile is "randomize", weights will
+    *        be generated according to a specified lower and upper bound. If the weightsFile is to a file of weights,
+    *        the weights are whitespace delimited and each new line represents a different value for the connectivity layer index (m).
+    *        For example, for a 2-2-1 network, the text file will be structured as follows: 
+    *        w000 w001 w010 w011
+    *        w100 w110
+    * @param outputsFile a filename where the file contains the theoretical outputs to be read. The
+    *        first line consists of 2 space separated integers, the first is the number of array items in
+    *        each row that follow, and the second is the number of rows. Each row in the file after
+    *        the first line corresponds to a set of inputs. Within each row, the elements are space-separated
+    *        and the first element is the first output of the network, the second element is the second
+    *        output of the network, etc. For example, for a neural network that is doing multiple outputs
+    *        and is supposed to output OR, AND, and XOR in the first, second, and third outputs, the input
+    *        cases would be all the different combinations of two boolean inputs: (0,0); (0,1); (1,0); and (1,1).
+    *        Thus, taking the first column to be the OR outputs, the second column to be the AND outputs, and
+    *        the third column to be the XOR outputs, the outputsFile would look like this:
+    *        3 4
+    *        0 0 0
+    *        1 0 1
+    *        1 0 1
+    *        1 1 0
+    * @param lowerBound a lower bound (inclusive) on the values of the randomly generated initial weights
+    * @param upperBound an upper bound (exclusive) on the values of the randomly generated initial weights
+    * @param outputNodes the number of output nodes in the network
+    */
+   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String weightsFile, String outputsFile, double lowerBound, double upperBound)
    {
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
@@ -164,7 +212,7 @@ public class Perceptron
       // the interior elements of layerSizes are the lengths of the hidden layer nodes
       for (int i = 1; i <= hiddenLayerNodes.length; i++)
       {
-         layerSizes[i] = hiddenLayerNodes[i-1];
+         layerSizes[i] = hiddenLayerNodes[i-1]; // set the value of the layerSizes array to its corresponding value in hiddenLayerNodes
       }
 
       /*
@@ -189,42 +237,92 @@ public class Perceptron
        */
       this.weights = new double[hiddenLayerNodes.length+1][maxNumNodes][maxNumNodes];
 
-      this.lambda = lambda;
-
-      this.maxIterations = maxIterations;
-      this.theoreticalOutputs = readOutputs(outputsFile);
-      this.lowerBound = lowerBound;
-      this.upperBound = upperBound;
+      this.lambda = lambda;                               // Set the instance variable lambda
+      this.maxIterations = maxIterations;                 // Set the instance variable maxIterations
+      this.theoreticalOutputs = readOutputs(outputsFile); // readOutputs returns a 2D array with the theoretical outputs for all output nodes & cases
+      this.lowerBound = lowerBound;                       // Set the instance variable lowerBound
+      this.upperBound = upperBound;                       // Set the instance variable upperBound
+      
+      readWeights(weightsFile);
    }
 
+   /**
+    * A helper method that reads theoretical outputs from a specified file name. The method is capable of reading the outputs for each combination
+    * of case and node.
+    * @param outputsFile a file name of the text file that specifies the theoretical outputs. The first line in the outputsFile should consist
+    *        of two space-separated natural numbers. The first number specifies the number of outputs (ex: 3 if OR, AND, and XOR are the different
+    *        output nodes). The second number specifies the number of cases per output (ex: 4 if the pairs 0,0; 0,1; 1,0; and 1,1 are being used
+    *        as boolean logic input cases). For example, if the user wants to do OR, and, and XOR as the three outputs on all 4 input pairs, the
+    *        outputsFile should look like this:
+    *        3 4
+    *        0 0 0
+    *        1 0 1
+    *        1 0 1
+    *        1 1 0
+    * @precondition the theoretical outputs file accounts for at least one output node and at least one case. If this is not satisfied, a relevant
+    *               RuntimeException with a descriptive error message will be thrown
+    *               
+    * Special considerations: this method performs exception catching to catch an NumberFormatException, FileNotFoundException,
+    * or ArrayIndexOutOfBoundsException that may be thrown. It will throw a RuntimeException with a relevant message
+    * if either of those occurs
+    * 
+    * @return a 2D array outputs, which represents the theoretical outputs for each output and case
+    */
    private double[][] readOutputs(String outputsFile)
    {
-      double[][] outputs;
+      double[][] outputs; // Declare a double array to store the outputs but do not specify the number of rows and columns (the value is null)
+
+      /*
+       * Use a try-catch construct.
+       * 
+       * It is possible that some contents of the file are not the type they should be (ex: weights cannot be parsed
+       * to double). In that case, catch the NumberFormatException and throw a RuntimeException with a relevant message
+       * for the user.
+       * 
+       * It is also possible that the file is misspecified and cannot be read. In that case, catch the
+       * FileNotFoundException and throw a RuntimeException with a relevant message for the user.
+       * 
+       * It is also possible that when the space-separated values are split into an array and the array is read
+       * from, the array index will be accessed out of bounds. In that case, catch the ArrayIndexOutOfBoundsException
+       * and throw a RuntimeException with a relevant message for the user.
+       */
       try
       {
          File myFile = new File(outputsFile); // Create a File object
          Scanner sc = new Scanner(myFile);    // Create a Scanner to scan the File object
 
-         String firstLine = sc.nextLine();
-         String[] firstLineArray = firstLine.split(" ");
-         int numOutputs = Integer.parseInt(firstLineArray[0]);
-         int numCases = Integer.parseInt(firstLineArray[1]);
+         String firstLine = sc.nextLine();                     // Get the first line
+         String[] firstLineArray = firstLine.split(" ");       // Split it by spaces
+         int numOutputs = Integer.parseInt(firstLineArray[0]); // The first element is the number of output nodes
 
-         outputs = new double[numCases][numOutputs];
-         System.out.println(Arrays.deepToString(outputs));
-
-         for (int i = 0; i < numCases; i++)
+         // If the number of outputs here does not match the number specified in the configuration file, throw a RuntimeException
+         if (numOutputs!=layerSizes[layerSizes.length-1])
          {
-            String nextLine = sc.nextLine();
-            String[] nextLineArray = nextLine.split(" ");
-            for(int j = 0; j < numOutputs; j++)
-            {
-               outputs[i][j] = Double.parseDouble(nextLineArray[j]);
-            }
+            throw new RuntimeException("Number of outputs in configuration file is inconsistent with the specified truth table values");
          }
 
+         int numCases = Integer.parseInt(firstLineArray[1]); // The second element is the number of cases
+
+         if (numOutputs == 0 || numCases == 0) // Nonsensical to run the network if no outputs or cases are specified
+         {
+            throw new RuntimeException("Number of outputs or cases in the specified theoretical values file was 0");
+         }
+
+         outputs = new double[numCases][numOutputs]; // Instantiate outputs with numCases as the first dimension and numOutputs as the second
+
+         for (int i = 0; i < numCases; i++) // Iterate over the number of cases
+         {
+            String nextLine = sc.nextLine();              // Get the next line
+            String[] nextLineArray = nextLine.split(" "); // Split it by spaces
+
+            for(int j = 0; j < numOutputs; j++) // Iterate over the number of outputs per case
+            {
+               outputs[i][j] = Double.parseDouble(nextLineArray[j]); // Parse a value corresponding to a case & output and put it into the 2d array
+            }
+         } // for (int i = 0; i < numCases; i++)
+
          sc.close(); // Close the scanner
-      } // try
+      } //try
       catch (NumberFormatException n)
       {
          // Throw RuntimeException if one of the values cannot be parsed as a double
@@ -235,11 +333,17 @@ public class Perceptron
          // Throw RuntimeException if the file cannot be found
          throw new RuntimeException("The file could not be found");
       }
-      return outputs;
+      catch (ArrayIndexOutOfBoundsException a)
+      {
+         // Throw RuntimeExceptioon if an array index is out of bounds
+         throw new RuntimeException("Array index out of bounds. Please check the space-separated values in the configuration file");
+      }
+
+      return outputs; // Return outputs, which will be null if 
    }
 
    /**
-    * A static helper method that finds the maximum value of an array. This is used in the code to find
+    * A static helper method that finds the maximum value of an integer array. This is used in the code to find
     * the maximum number of nodes in the hidden layer array.
     * 
     * @param arr an array where the maximum value will be determined
@@ -253,30 +357,33 @@ public class Perceptron
        */
       int max = Integer.MIN_VALUE;
 
-      for (int i : arr)
+      for (int i : arr) // Iterate over each value in the array
       {
-         max = Math.max(i, max);
+         max = Math.max(i, max); // Use the Math.max method to find the max between i and max
       }
 
-      return max;
+      return max; // Return the max value
    }
 
    /**
-    * Reads in the weights from a text file. In the text file, the weights are whitespace delimited and each
-    * new line represents a different value for the connectivity layer index (m). For example, for a 2-2-1 network,
+    * Reads in the weights from a text file OR generates random weights, depending on whether filename is a path to a file of weights
+    * or the word "randomize". If the word "randomize" is used, then weights will be generated randomly within a lower and upper bound.
+    * If the filename is a path to a weights file, the weights will be read from that text file. In the text file, the weights are whitespace
+    * delimited and each new line represents a different value for the connectivity layer index (m). For example, for a 2-2-1 network,
     * the text file will be structured as follows: 
     * w000 w001 w010 w011
     * w100 w110
     * 
+    * @param filename the path to a file that will be read OR the word "randomize"
+    * @precondition filename is either a file name or the word "randomize"
+    * 
     * Special considerations: this method performs exception catching to catch an InputMismatchException
     * or FileNotFoundException that may be thrown. It will throw a RuntimeException with a relevant message
     * if either of those occurs
-    * 
-    * @param filename the path to a file that will be read
     */
    private void readWeights(String filename)
    {
-      if (filename.equals("randomize"))
+      if (filename.equals("randomize")) // Use randomly generated weights
       {
          /*
           * The outermost for loop is going over each connectivity layer. The number of connectivity
@@ -547,17 +654,16 @@ public class Perceptron
 
    private void updateWeights(double[] theoretical, double[] calculated)
    {
-      
 
       // For the weights with index 1
       for(int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
       {
          // Get the inverse (logit) of the calculated output
          double inverseCalculated = inverseActivation(calculated[outputNode]);
-   
+
          // Take the activation function derivative of the logit
          double derivInverseCalculated = activationFunctionDerivative(inverseCalculated);
-   
+
          // Find the difference between the theoretical and calculated outputs
          double difference = theoretical[outputNode] - calculated[outputNode];
          for (int node = 0; node < layerSizes[1]; node++)
@@ -575,26 +681,26 @@ public class Perceptron
       {
          // Get the inverse (logit) of the calculated output
          double inverseCalculated = inverseActivation(calculated[outputNode]);
-   
+
          // Take the activation function derivative of the logit
          double derivInverseCalculated = activationFunctionDerivative(inverseCalculated);
-   
+
          // Find the difference between the theoretical and calculated outputs
          double difference = theoretical[outputNode] - calculated[outputNode];
          for (int prev = 0; prev < layerSizes[0]; prev++) // Iterate over the previous nodes
          {
-            
+
             for (int next = 0; next < layerSizes[1]; next++) // Iterate over the next node
             {
                // Get the inverse (logit) of the activation that lies on the right of the weight
                double inverseRightActivation = inverseActivation(activations[1][next]);
-   
+
                // Get the activation function derivative of it
                double derivInverseRight = activationFunctionDerivative(inverseRightActivation);
-   
+
                // Get the delta weight using the formula
                double deltaWeight = lambda*activations[0][prev]*derivInverseRight*(difference)*derivInverseCalculated*weights[1][next][outputNode];
-   
+
                //System.out.println(deltaWeight);
                // Update the weight
                weights[0][prev][next] += deltaWeight;
@@ -624,13 +730,13 @@ public class Perceptron
 
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
-      
+
          double[] myTrainingCase = trainingCases[i];                      // Extract one training case
          double[] theoreticalOutputsArray = theoreticalOutputs[i];    // Find the theoretical output
          double[] actualOutputsArray = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
 
          //lastError[i][outputNode] = calculateError(theoreticalOutput, actualOutput); // Set array element to be one case error
-      
+
       }
 
       while (numIterations < maxIterations) // This will run until numIterations exceeds maxIterations
@@ -641,7 +747,7 @@ public class Perceptron
             double[] myTrainingCase = trainingCases[i];                      // Extract one training case
             double[] theoreticalOutputsArray = theoreticalOutputs[i];
             double[] actualOutputsArray = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
-            
+
             updateWeights(theoreticalOutputsArray, actualOutputsArray); // Update the model weights according to the design document
 
             errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the new error into an array element
@@ -652,18 +758,16 @@ public class Perceptron
          numIterations++;
       }
 
-         
-       // while (numIterations <= maxIterations)
+      // while (numIterations <= maxIterations)
       double totalError = calculateTotalError(errorArr);                      // Calculate the total error
       System.out.println("NUMBER OF ITERATIONS: " + numIterations);           // Print out the number of iterations
       System.out.println("FINAL TOTAL ERROR: " + totalError);                 // Print out the final total error
       System.out.println("LAMBDA (FIXED): " + lambda);                        // Print out the lambda value
       System.out.println("INPUTS, THEORETICAL OUTPUTS, AND ACTUAL OUTPUTS:"); // Print out the label for the inputs, theoretical and actual outputs
 
-      
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
-         
+
          double[] myTrainingCase = trainingCases[i];                      // Extract one training case
          double[] theoreticalOutputsArray = theoreticalOutputs[i];    // Find the theoretical output
          double[] actualOutputsArray = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
@@ -671,9 +775,9 @@ public class Perceptron
          System.out.print("INPUTS: " + Arrays.toString(myTrainingCase) + " "); // Print out the inputs for a case
          System.out.println("THEORETICAL OUTPUTS: " + Arrays.toString(theoreticalOutputsArray));   // Print out the theoretical output for a case
          System.out.println("ACTUAL OUTPUTS: " + Arrays.toString(actualOutputsArray));                 // Print out the actual output for a case
-         
+
       }
-      
+
    }
 
    /**
@@ -739,13 +843,7 @@ public class Perceptron
    {
       // Use the constructor which takes in a configuration file 
       Perceptron myPerp = new Perceptron("files/config.txt");
-
-      /*
-       * Read the weights from the specified file. In this example, the input passed to readWeights is a
-       * relative file path because files is a folder containing the project.
-       */
-      myPerp.readWeights("randomize");
-
+      
       /*
        * Read the inputs from the specified file and run the network on each set of inputs.
        * In this example, the input passed to readWeights is a relative file path because files is a 
