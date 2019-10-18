@@ -155,8 +155,8 @@ public class Perceptron
       } //try
       catch (NumberFormatException n)
       {
-         // Throw RuntimeException if one of the values cannot be parsed as a double
-         throw new RuntimeException("Could not parse a weight value as a double");
+         // Throw RuntimeException if a parsing error occurs
+         throw new RuntimeException("Could not parse the file");
       }
       catch (FileNotFoundException f)
       {
@@ -397,14 +397,14 @@ public class Perceptron
                // Use a for loop to iterate an amount of times equal to the number of activations in the next layer
                for (int next = 0; next < layerSizes[m+1]; next++)
                {
+                  // Generate a random weight from lowerBound to upperBound at set it in the appropriate place in the weights 3D array
                   weights[m][prev][next] = Math.random()*(upperBound-lowerBound) + lowerBound;
-               } // for (int next = 0; next < layerSizes[m+1]; next++)
-            } // for (int prev = 0; prev < layerSizes[m]; prev++)
+               }
+            }
          } // for (int m = 0; m < layerSizes.length-1; m++)
-      }
-      else
+      } // if (filename.equals("randomize"))
+      else // Use the weights from the file
       {
-
          /*
           * Use a try-catch construct.
           * It is possible that a weight cannot be parsed as a double. In that case, catch the InputMismatchException
@@ -438,7 +438,7 @@ public class Perceptron
                          * If the item cannot be parsed as a double, an InputMismatchException will be thrown and caught.
                          */
                         weights[m][prev][next] = sc.nextDouble();
-                     } // if (sc.hasNext())
+                     }
                   } // for (int next = 0; next < layerSizes[m+1]; next++)
                } // for (int prev = 0; prev < layerSizes[m]; prev++)
             } // for (int m = 0; m < layerSizes.length-1; m++)
@@ -464,14 +464,14 @@ public class Perceptron
             // Throw RuntimeException if the file cannot be found
             throw new RuntimeException("The file could not be found");
          }
-      }
+      } // else
    }
 
    /**
     * Runs the network on data. Takes in a double[] of inputs and set the values of the input nodes to be the values in
     * the inputs array. Runs the initial values of the input nodes through the network. This is done by looking at each
     * node in the hidden layers and output layer, and multiplying the previous activations by the weights running from
-    * each previous activation to the "current" node. Calls the helper method resetActivations to set all the activations
+    * each previous activation to the "current" node (dot product). Calls the helper method resetActivations to set all the activations
     * to 0 after the input data is run through the network. Returns an array of doubles 
     * 
     * @param inputs an array of doubles where each item is an activation state of an input node
@@ -479,9 +479,6 @@ public class Perceptron
     */
    private double[] runNetwork(double[] inputs)
    {
-      // Call a method to set all the activation states back to 0
-      resetActivations();
-
       // Iterate a number of times equal to the number of nodes in the input layer
       for (int i = 0; i < layerSizes[0]; i++)
       {
@@ -497,6 +494,8 @@ public class Perceptron
          // Within each layer, iterate over the indices of the nodes
          for (int node = 0; node < layerSizes[layer]; node++)
          {
+            activations[layer][node] = 0.0; // Reset the activation value to 0.0
+            
             // Extract the current activations in the layer to the left of the node
             double[] prevActivations = activations[layer-1];
 
@@ -524,59 +523,53 @@ public class Perceptron
        */
       double[] outputs = Arrays.copyOfRange(activations[activations.length-1], 0, layerSizes[layerSizes.length-1]);
 
-      // Return outputs, which was saved earlier
-      return outputs;
+      return outputs; // Return outputs, which was saved earlier
    }
 
    /**
-    * The resetActivations method resets all of the activation states to 0.0, so that the network
-    * can be run on new data.
-    */
-   private void resetActivations()
-   {
-      for (int i = 0; i < activations.length; i++) // Iterate over the rows
-      {
-         for (int j = 0; j < activations[0].length; j++) // Iterate over the columns
-         {
-            activations[i][j] = 0.0; // Set the activation state to 0.0
-         }
-      }
-   }
-
-   /**
-    * The readInputs method reads the user inputs from a file. The file must follow a specific format.
-    * Each line in the file consists of whitespace delimited inputs. Different sets of inputs occur
-    * on different lines. For example, a file with n lines would have n sets of inputs to be run
-    * through the network.
-    * 
-    * Special considerations: this method performs exception catching to catch a NumberFormatException
-    * or FileNotFoundException that may be thrown. It will throw a RuntimeException with a relevant message
-    * if either of those occurs
+    * The readInputs method reads the user inputs from a file and returns them as a 2D array.
+    * The file must follow a specific format. Each line in the file consists of whitespace delimited inputs.
+    * Different sets of inputs occur on different lines. For example, a file with n lines would have n sets 
+    * of inputs to be run through the network.
     * 
     * @param filename the path of the file to be read
+    * 
+    * Special considerations: this method performs exception catching to catch an NumberFormatException, FileNotFoundException,
+    * or ArrayIndexOutOfBoundsException that may be thrown. It will throw a RuntimeException with a relevant message
+    * if either of those occurs
     */
    private double[][] readInputs(String filename)
    {
-
-      double[][] inputs = new double[4][2];
-
-      int count = 0;
+      double[][] inputs;   // Declare a 2D array to store the inputs (each row is a case)
+      int inputsIndex = 0; // An index into the inputs 2D array
+      
       /*
        * Use a try-catch construct.
-       * It is possible that after splitting each line and attempting to convert each element into a double,
-       * an element cannot be converted. A NumberFormatException will be thrown. Catch that exception
-       * and throw a new RuntimeException with an appropriate error message.
        * 
-       * It is also possible that the file path is incorrect. In that case, catch the FileNotFoundException
-       * and throw a new RuntimeException with an appropriate error message.
+       * It is possible that some contents of the file are not the type they should be (ex: inputs cannot be parsed
+       * to doubles). In that case, catch the NumberFormatException and throw a RuntimeException with a relevant message
+       * for the user.
+       * 
+       * It is also possible that the file is misspecified and cannot be read. In that case, catch the
+       * FileNotFoundException and throw a RuntimeException with a relevant message for the user.
+       * 
+       * It is also possible that when the space-separated values are split into an array and the array is read
+       * from, the array index will be accessed out of bounds. In that case, catch the ArrayIndexOutOfBoundsException
+       * and throw a RuntimeException with a relevant message for the user.
        */
       try
       {
          File myFile = new File(filename); // Create a File object
          Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
+         
+         String firstLine = sc.nextLine();               // Get the first line
+         String[] firstLineArray = firstLine.split(" "); // Split it by spaces
+         
+         int numCases = Integer.parseInt(firstLineArray[0]);         // Parse the first element as an int, it is the number of cases
+         int numInputsPerCase = Integer.parseInt(firstLineArray[1]); // Parse the second element as an int, it is the numbe of inputs per case
+         inputs = new double[numCases][numInputsPerCase];            // Instantiate inputs as a 2D array
 
-         // Keep reading while the scanner can read another line
-         while (sc.hasNextLine())
+         while (sc.hasNextLine()) // Keep reading while the scanner can read another line
          {
             String line = sc.nextLine();            // Extract the next line
             String[] splitString = line.split(" "); // Split it by spaces
@@ -591,48 +584,45 @@ public class Perceptron
                throw new RuntimeException("Incorrect number of inputs specified in the file");
             }
 
-            // Create a double[] with same length as the String[]
-            double[] splitDouble = new double[splitString.length];
+            double[] splitDouble = new double[splitString.length]; // Create a double[] with same length as the String[]
 
-            // Iterate over the String array
-            for (int i = 0; i < splitString.length; i++)
+            for (int i = 0; i < splitString.length; i++) // Iterate over the String array
             {
                // Parse the element as a Double and put it into the corresponding slot in the double array
                splitDouble[i] = Double.parseDouble(splitString[i]);
             }
 
-            // Print out the array of inputs using the Arrays.toString method
-            System.out.println("INPUTS: " + Arrays.toString(splitString));
+            System.out.println("INPUTS: " + Arrays.toString(splitString)); // Print out the array of inputs using the Arrays.toString method
 
-            /*
-             * Run the network on the current set of inputs and print out the outputs. Before the outputs
-             * are actually printed out, the activation states will be, because runNetwork is called on the splitDouble array,
-             * which prints out the activation states as the inputs travel through the network. Because runNetwork returns
-             * an array of outputs, that array will then be printed out.
-             */
-
-            inputs[count] = splitDouble;
-            count++;
+            inputs[inputsIndex] = splitDouble; // The inputs 2D array at the inputsIndex is set to the next case inputs
+            inputsIndex++;                     // Increment inputsIndex because we are moving to the next case
          } // while (sc.hasNextLine())
+         
          sc.close(); // Close the scanner
       } // try
       catch (NumberFormatException n)
       {
-         // Throw RuntimeException if one of the values cannot be parsed as a double
-         throw new RuntimeException("Could not parse a weight value as a double");
+         // Throw RuntimeException if a parsing error occurs
+         throw new RuntimeException("Could not parse the file");
       }
       catch (FileNotFoundException f)
       {
          // Throw RuntimeException if the file cannot be found
          throw new RuntimeException("The file could not be found");
       }
+      catch (ArrayIndexOutOfBoundsException a)
+      {
+         // Throw RuntimeExceptioon if an array index is out of bounds
+         throw new RuntimeException("Array index out of bounds. Please check the space-separated values in the configuration file");
+      }
 
-      return inputs;
+      return inputs; // Return inputs, which is now populated with inputs
    }
 
    /**
-    * This method applies an activation function to a given double. It can be changed to different
-    * activation functions, such as the sigmoid function f(x) = 1/(1+Math.exp(-x)) or the identity function f(x) = x.
+    * This static method applies an activation function to a given double. It can be changed to different
+    * activation functions as the user wishes. The activation function takes a large input and "scales" it
+    * down to a input with a much smaller magnitude.
     * 
     * @param x a double value which the activation function will be applied to
     */
@@ -641,6 +631,12 @@ public class Perceptron
       return 1.0/(1.0+Math.exp(-x));
    }
 
+   /**
+    * This static method applies the derivative of an activation function to a given double. It can be changed
+    * as the user wishes.
+    * 
+    * @param x a double value which the activation function will be applied to
+    */
    private static double activationFunctionDerivative(double x)
    {
       double sig = activationFunction(x);
