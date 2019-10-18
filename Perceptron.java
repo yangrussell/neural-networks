@@ -650,7 +650,6 @@ public class Perceptron
 
    private void updateWeights(double[] theoretical, double[] calculated)
    {
-
       // For the weights with index 1
       for(int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
       {
@@ -721,21 +720,21 @@ public class Perceptron
       {
          for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
          {
-            double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-            double[] theoreticalOutputsArray = theoreticalOutputs[i];
-            double[] actualOutputsArray = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
+            double[] myTrainingCase = trainingCases[i];               // Extract one training case
+            double[] theoreticalOutputsArray = theoreticalOutputs[i]; // Get the corresponding theoretical outputs array
+            double[] actualOutputsArray = runNetwork(myTrainingCase); // Run the network to get the actual outputs array
 
-            updateWeights(theoreticalOutputsArray, actualOutputsArray); // Update the model weights according to the design document
+            updateWeights(theoreticalOutputsArray, actualOutputsArray); // Update the model weights according to the design document formulas
 
             errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the new error into an array element
 
             lambda*=LAMBDA_MULTIPLIER;
-         }
+         } // for (int i = 0; i < trainingCases.length; i++)
+         
          // Increment iteration counter
          numIterations++;
-      }
+      } // while (numIterations < maxIterations)
 
-      // while (numIterations <= maxIterations)
       double totalError = calculateTotalError(errorArr);                      // Calculate the total error
       System.out.println("NUMBER OF ITERATIONS: " + numIterations);           // Print out the number of iterations
       System.out.println("FINAL TOTAL ERROR: " + totalError);                 // Print out the final total error
@@ -744,16 +743,18 @@ public class Perceptron
 
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
+         double[] myTrainingCase = trainingCases[i];               // Extract one training case
+         double[] theoreticalOutputsArray = theoreticalOutputs[i]; // Find the theoretical outputs array
+         double[] actualOutputsArray = runNetwork(myTrainingCase); // Run the network to get the actual output layer
 
-         double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-         double[] theoreticalOutputsArray = theoreticalOutputs[i];    // Find the theoretical output
-         double[] actualOutputsArray = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
-
+         errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the new error into an array element
+         
          System.out.print("INPUTS: " + Arrays.toString(myTrainingCase) + " "); // Print out the inputs for a case
          System.out.println("THEORETICAL OUTPUTS: " + Arrays.toString(theoreticalOutputsArray));   // Print out the theoretical output for a case
          System.out.println("ACTUAL OUTPUTS: " + Arrays.toString(actualOutputsArray));                 // Print out the actual output for a case
 
-      }
+      } // for (int i = 0; i < trainingCases.length; i++)
+      System.out.println("TOTAL ERROR: " + calculateTotalError(errorArr));
 
    }
 
