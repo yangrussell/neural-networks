@@ -34,12 +34,14 @@ public class Perceptron
    // instance variables  
    private int[] layerSizes;                            // A 1D array representing the sizes of each of the layers
    private double[][] activations;                      // A 2D array representing the activation states of the network
+   private double[][] rawActivations;                   // A 2D array representing the activation states of the network without activation function
    private double[][][] weights;                        // A 3D array representing the weights of the network
    private double lambda;                               // A value of lambda, the learning factor
    private int maxIterations;                           // A maximum number of iterations that the network will train for
-   private double[][] theoreticalOutputs;               // A 2D array - each row is a array of outputs and each column corresponds to a set of inputs
+   private double[][] theoreticalOutputs;               // A 2D array - each row (besides first) is a array of outputs for each input case
    private double lowerBound;                           // Lower bound on the random weights
    private double upperBound;                           // Upper bound on the random weights
+   private double[][] trainingCases;                    // A 2D array - each row (besides first) is an input case
    private static final double LAMBDA_MULTIPLIER = 1.0; // A value to multiply lambda by (not in use now as the network is not adaptive)
 
    /**
@@ -58,6 +60,8 @@ public class Perceptron
     *        For example, for a 2-2-1 network, the text file will be structured as follows: 
     *        w000 w001 w010 w011
     *        w100 w110
+    * @param inputsFile a filename of the inputs file, where the first line consists of 2 space separated integers.
+    *        The first is the number of cases and the second is the number of inputs per case.
     * @param outputsFile a filename where the file contains the theoretical outputs to be read. The
     *        first line consists of 2 space separated integers, the first is the number of array items in
     *        each row that follow, and the second is the number of rows. Each row in the file after
@@ -77,10 +81,10 @@ public class Perceptron
     * @param upperBound an upper bound (exclusive) on the values of the randomly generated initial weights
     * @param outputNodes the number of output nodes in the network
     */
-   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String weightsFile, String outputsFile, double lowerBound, double upperBound)
+   public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String weightsFile, String trainingCases, String outputsFile, double lowerBound, double upperBound)
    {
       // Call the setInstanceVariables method to set the instance variables to the passed values
-      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, weightsFile, outputsFile, lowerBound, upperBound);
+      setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, weightsFile, trainingCases, outputsFile, lowerBound, upperBound);
    }
 
    /**
@@ -88,7 +92,6 @@ public class Perceptron
     * based on the read values, using the helper method setInstanceVariables.
     * 
     * @param filename the name of the configuration file
-    * 
     *               
     * Special considerations: this method performs exception catching to catch an NumberFormatException, FileNotFoundException,
     * or ArrayIndexOutOfBoundsException that may be thrown. It will throw a RuntimeException with a relevant message
@@ -140,6 +143,8 @@ public class Perceptron
 
          String weightsFile = sc.nextLine();                // Get the filename (or the word "randomize") of the weights (the sixth line)
 
+         String inputsFile = sc.nextLine();                 // Get the filename of the inputs file (the seventh line)
+         
          String outputsFile = sc.nextLine();                // Get the filename of the outputsFile (the seventh line)
 
          String eighthLine = sc.nextLine();                 // Get eighth scanner line
@@ -150,8 +155,7 @@ public class Perceptron
          sc.close(); // close the scanner object
 
          // Call the setInstanceVariables method to set the instance variables to the values read from the configuration file
-         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, weightsFile, outputsFile, lowerBound, upperBound);
-
+         setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, weightsFile, inputsFile, outputsFile, lowerBound, upperBound);
       } //try
       catch (NumberFormatException n)
       {
@@ -184,6 +188,8 @@ public class Perceptron
     *        For example, for a 2-2-1 network, the text file will be structured as follows: 
     *        w000 w001 w010 w011
     *        w100 w110
+    * @param inputsFile a filename of the inputs file, where the first line consists of 2 space separated integers.
+    *        The first is the number of cases and the second is the number of inputs per case.
     * @param outputsFile a filename where the file contains the theoretical outputs to be read. The
     *        first line consists of 2 space separated integers, the first is the number of array items in
     *        each row that follow, and the second is the number of rows. Each row in the file after
@@ -203,7 +209,7 @@ public class Perceptron
     * @param upperBound an upper bound (exclusive) on the values of the randomly generated initial weights
     * @param outputNodes the number of output nodes in the network
     */
-   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String weightsFile, String outputsFile, double lowerBound, double upperBound)
+   private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, String weightsFile, String inputsFile, String outputsFile, double lowerBound, double upperBound)
    {
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
@@ -228,6 +234,12 @@ public class Perceptron
        * instead of a ragged one, which uses more storage but is simpler to use.
        */
       this.activations = new double[layerSizes.length][maxNumNodes];
+      
+      /*
+       * rawActivations is a rectangular array which is the same dimensions as activations. It stores the activations
+       * without an activation function applied to them.
+       */
+      this.rawActivations = new double[layerSizes.length][maxNumNodes];
 
       /*
        * Weights is a 3D array. The first dimension is the value of m (the index of the connectivity layer). The number of
@@ -244,6 +256,7 @@ public class Perceptron
       this.upperBound = upperBound;                       // Set the instance variable upperBound
 
       readWeights(weightsFile);
+      readInputs(inputsFile);
    }
 
    /**
@@ -477,7 +490,7 @@ public class Perceptron
     * @param inputs an array of doubles where each item is an activation state of an input node
     * @return an array of doubles where each item is an output value
     */
-   private double[] runNetwork(double[] inputs)
+   private double[] runNetwork(double[] inputs, boolean raw)
    {
       // Iterate a number of times equal to the number of nodes in the input layer
       for (int i = 0; i < layerSizes[0]; i++)
@@ -509,25 +522,38 @@ public class Perceptron
                activations[layer][node]+=prevActivations[w]*prevWeight;
             } // for (int w = 0; w < layerSizes[layer-1]; w++)
 
+            // Before applying the activation function, copy the raw activations to the rawActivations 2D array
+            rawActivations[layer][node] = activations[layer][node];
+            
             // Apply the activation function to the new activation state by calling the activationFunction method
             activations[layer][node] = activationFunction(activations[layer][node]);
          } // for (int node = 0; node < layerSizes[layer]; node++)
       } // for (int layer = 1; layer < layerSizes.length; layer++)
 
-      /*
-       * Extract the array of outputs into a variable so that it can be returned. The Arrays.copyOfRange method allows
-       * for extracting a slice of an array. Here, because activations is a rectangular (non-ragged) array, we don't need
-       * the whole of the last layer (activations[activations.length-1]). All that is needed is the part from 0 to
-       * layerSizes[layerSizes.length-1] (the number of output nodes). Note that the third parameter, which specifies
-       * the "to" index, is exclusive.
-       */
-      double[] outputs = Arrays.copyOfRange(activations[activations.length-1], 0, layerSizes[layerSizes.length-1]);
+      double[] outputs; // Declare outputs
+      
+      if (raw = false)
+      {
+         /*
+          * Extract the array of outputs into a variable so that it can be returned. The Arrays.copyOfRange method allows
+          * for extracting a slice of an array. Here, because activations is a rectangular (non-ragged) array, we don't need
+          * the whole of the last layer (activations[activations.length-1]). All that is needed is the part from 0 to
+          * layerSizes[layerSizes.length-1] (the number of output nodes). Note that the third parameter, which specifies
+          * the "to" index, is exclusive.
+          */
+         outputs = Arrays.copyOfRange(activations[activations.length-1], 0, layerSizes[layerSizes.length-1]);
+      }
+      else
+      {
+         // Repeat the process above but using the raw activations array
+         outputs = Arrays.copyOfRange(rawActivations[rawActivations.length-1], 0, layerSizes[layerSizes.length-1]);
+      }
 
       return outputs; // Return outputs, which was saved earlier
    }
 
    /**
-    * The readInputs method reads the user inputs from a file and returns them as a 2D array.
+    * The readInputs method reads the user inputs from a file and sets them to an instance variable.
     * The file must follow a specific format. Each line in the file consists of whitespace delimited inputs.
     * Different sets of inputs occur on different lines. For example, a file with n lines would have n sets 
     * of inputs to be run through the network.
@@ -538,9 +564,8 @@ public class Perceptron
     * or ArrayIndexOutOfBoundsException that may be thrown. It will throw a RuntimeException with a relevant message
     * if either of those occurs
     */
-   private double[][] readInputs(String filename)
+   private void readInputs(String filename)
    {
-      double[][] inputs;   // Declare a 2D array to store the inputs (each row is a case)
       int inputsIndex = 0; // An index into the inputs 2D array
 
       /*
@@ -567,8 +592,10 @@ public class Perceptron
 
          int numCases = Integer.parseInt(firstLineArray[0]);         // Parse the first element as an int, it is the number of cases
          int numInputsPerCase = Integer.parseInt(firstLineArray[1]); // Parse the second element as an int, it is the numbe of inputs per case
-         inputs = new double[numCases][numInputsPerCase];            // Instantiate inputs as a 2D array
+         trainingCases = new double[numCases][numInputsPerCase];            // Instantiate inputs as a 2D array
 
+         System.out.println("INPUTS:");
+         
          while (sc.hasNextLine()) // Keep reading while the scanner can read another line
          {
             String line = sc.nextLine();            // Extract the next line
@@ -592,11 +619,13 @@ public class Perceptron
                splitDouble[i] = Double.parseDouble(splitString[i]);
             }
 
-            System.out.println("INPUTS: " + Arrays.toString(splitString)); // Print out the array of inputs using the Arrays.toString method
+            System.out.println("Input case: " + Arrays.toString(splitString)); // Print out the array of inputs using the Arrays.toString method
 
-            inputs[inputsIndex] = splitDouble; // The inputs 2D array at the inputsIndex is set to the next case inputs
+            trainingCases[inputsIndex] = splitDouble; // The inputs 2D array at the inputsIndex is set to the next case inputs
             inputsIndex++;                     // Increment inputsIndex because we are moving to the next case
          } // while (sc.hasNextLine())
+         
+         System.out.println(); // Add a new line after the inputs are all printed out
 
          sc.close(); // Close the scanner
       } // try
@@ -615,8 +644,6 @@ public class Perceptron
          // Throw RuntimeExceptioon if an array index is out of bounds
          throw new RuntimeException("Array index out of bounds. Please check the space-separated values in the configuration file");
       }
-
-      return inputs; // Return inputs, which is now populated with inputs
    }
 
    /**
@@ -643,60 +670,58 @@ public class Perceptron
       return sig*(1.0-sig);
    }
 
-   private static double inverseActivation(double x)
-   {
-      return Math.log(x/(1-x));
-   }
-
+   /**
+    * Updates the weights according to the theoretical and calculated outputs.
+    * 
+    * @param theoretical an array of theoretical outputs
+    * @param calculated an array of calculated outputs
+    */
    private void updateWeights(double[] theoretical, double[] calculated)
    {
       // For the weights with index 1
       for(int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
       {
-         // Get the inverse (logit) of the calculated output
-         double inverseCalculated = inverseActivation(calculated[outputNode]);
+         // Get calculated output
+         double output = calculated[outputNode];
 
-         // Take the activation function derivative of the logit
-         double derivInverseCalculated = activationFunctionDerivative(inverseCalculated);
+         // Take the activation function derivative of the output
+         double derivCalculated = activationFunctionDerivative(output);
 
          // Find the difference between the theoretical and calculated outputs
          double difference = theoretical[outputNode] - calculated[outputNode];
          for (int node = 0; node < layerSizes[1]; node++)
          {
             // Calculate the deltaWeight using the formula
-            double deltaWeight = lambda*(difference)*derivInverseCalculated*activations[1][node];
-            //System.out.println(deltaWeight);
+            double deltaWeight = lambda*(difference)*derivCalculated*activations[1][node];
+
             // Update weight
             weights[1][node][outputNode] += deltaWeight;
          }
       } // for(int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
 
-      // For the weights with index 0
-      for (int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
+      for (int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++) // For the weights with index 0
       {
-         // Get the inverse (logit) of the calculated output
-         double inverseCalculated = inverseActivation(calculated[outputNode]);
+         // Get calculated output
+         double output = calculated[outputNode];
 
-         // Take the activation function derivative of the logit
-         double derivInverseCalculated = activationFunctionDerivative(inverseCalculated);
+         // Take the activation function derivative of the output
+         double derivCalculated = activationFunctionDerivative(output);
 
          // Find the difference between the theoretical and calculated outputs
          double difference = theoretical[outputNode] - calculated[outputNode];
          for (int prev = 0; prev < layerSizes[0]; prev++) // Iterate over the previous nodes
          {
-
             for (int next = 0; next < layerSizes[1]; next++) // Iterate over the next node
             {
-               // Get the inverse (logit) of the activation that lies on the right of the weight
-               double inverseRightActivation = inverseActivation(activations[1][next]);
+               // Get the activation that lies on the right of the weight
+               double rightActivation = rawActivations[1][next];
 
                // Get the activation function derivative of it
-               double derivInverseRight = activationFunctionDerivative(inverseRightActivation);
+               double derivRight = activationFunctionDerivative(rightActivation);
 
                // Get the delta weight using the formula
-               double deltaWeight = lambda*activations[0][prev]*derivInverseRight*(difference)*derivInverseCalculated*weights[1][next][outputNode];
+               double deltaWeight = lambda*activations[0][prev]*derivRight*(difference)*derivCalculated*weights[1][next][outputNode];
 
-               //System.out.println(deltaWeight);
                // Update the weight
                weights[0][prev][next] += deltaWeight;
             } // for (int next = 0; next < layerSizes[1]; next++)
@@ -706,11 +731,9 @@ public class Perceptron
 
    /**
     * The gradientDescent method minimizes the total error function by stepping the weights in the opposite direction
-    * of the gradient (the direction of steepest ascent).
-    * 
-    * @param trainingCases a 2D array where each row (1D array) is one set of training inputs
+    * of the gradient (the direction of steepest ascent). See the design document for the mathematical results used here.
     */
-   private void gradientDescent(double[][] trainingCases)
+   private void gradientDescent()
    {
       int numIterations = 0; // Counter for the number of iterations
 
@@ -720,118 +743,123 @@ public class Perceptron
       {
          for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
          {
-            double[] myTrainingCase = trainingCases[i];               // Extract one training case
-            double[] theoreticalOutputsArray = theoreticalOutputs[i]; // Get the corresponding theoretical outputs array
-            double[] actualOutputsArray = runNetwork(myTrainingCase); // Run the network to get the actual outputs array
+            double[] myTrainingCase = trainingCases[i];                           // Extract one training case
+            double[] theoreticalOutputsArray = theoreticalOutputs[i];             // Get the corresponding theoretical outputs array
+            double[] actualOutputsArray = runNetwork(myTrainingCase, true); // Run the network to get the actual outputs array
 
             updateWeights(theoreticalOutputsArray, actualOutputsArray); // Update the model weights according to the design document formulas
 
-            errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the new error into an array element
-
-            lambda*=LAMBDA_MULTIPLIER;
+            /*
+             * Note: Because lambda is fixed and NOT adaptive, we don't need to calculate the case errors at each iteration. If instead, lambda
+             * was adaptive, we would calculate the case errors so we could see whether they increased or decreased and adjust lambda accordingly.
+             */
+            
+            lambda*=LAMBDA_MULTIPLIER; // Adaptive lambda is not implemented, but this is a placeholder in case it is implemented layer
          } // for (int i = 0; i < trainingCases.length; i++)
          
          // Increment iteration counter
          numIterations++;
       } // while (numIterations < maxIterations)
 
-      double totalError = calculateTotalError(errorArr);                      // Calculate the total error
-      System.out.println("NUMBER OF ITERATIONS: " + numIterations);           // Print out the number of iterations
-      System.out.println("FINAL TOTAL ERROR: " + totalError);                 // Print out the final total error
-      System.out.println("LAMBDA (FIXED): " + lambda);                        // Print out the lambda value
-      System.out.println("INPUTS, THEORETICAL OUTPUTS, AND ACTUAL OUTPUTS:"); // Print out the label for the inputs, theoretical and actual outputs
+      double totalError = calculateTotalError(errorArr); // Calculate the total error
+      System.out.println("RESULTS:");                    // Print out the label for the inputs, theoretical and actual outputs
 
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
-         double[] myTrainingCase = trainingCases[i];               // Extract one training case
-         double[] theoreticalOutputsArray = theoreticalOutputs[i]; // Find the theoretical outputs array
-         double[] actualOutputsArray = runNetwork(myTrainingCase); // Run the network to get the actual output layer
+         double[] myTrainingCase = trainingCases[i];                      // Extract one training case
+         double[] theoreticalOutputsArray = theoreticalOutputs[i];        // Find the theoretical outputs array
+         double[] actualOutputsArray = runNetwork(myTrainingCase, false); // Run the network to get the actual output layer
 
-         errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the new error into an array element
+         errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the case error into an array element
          
-         System.out.print("INPUTS: " + Arrays.toString(myTrainingCase) + " "); // Print out the inputs for a case
-         System.out.println("THEORETICAL OUTPUTS: " + Arrays.toString(theoreticalOutputsArray));   // Print out the theoretical output for a case
-         System.out.println("ACTUAL OUTPUTS: " + Arrays.toString(actualOutputsArray));                 // Print out the actual output for a case
+         System.out.println("Inputs: " + Arrays.toString(myTrainingCase) + " ");                 // Print out the inputs for a case
+         System.out.println("Theoretical outputs: " + Arrays.toString(theoreticalOutputsArray)); // Print out the theoretical output for a case
+         System.out.println("Actual outputs: " + Arrays.toString(actualOutputsArray));           // Print out the actual output for a case
 
       } // for (int i = 0; i < trainingCases.length; i++)
-      System.out.println("TOTAL ERROR: " + calculateTotalError(errorArr));
-
+      
+      System.out.println();                                                // Print a new line to separate the results and configuration printing
+      System.out.println("NETWORK CONFIGURATION & FINAL TOTAL ERROR");     // Print out the label for the print statements that follow
+      System.out.println("Number of iterations: " + numIterations);        // Print out the number of iterations
+      System.out.println("Lambda (fixed): " + lambda);                     // Print out the lambda value
+      System.out.println("Total error: " + calculateTotalError(errorArr)); // Print out the final total error
    }
 
    /**
-    * Makes a deep copy of the current weights 3D array and returns it
+    * Calculates the error between a theoretical outputs array and actual outputs array according to the formulas
+    * in the design document.
     * 
-    * @param weights a 3D array of weights to be copied and returned
-    */
-   private double[][][] deepCopyWeights(double[][][] weights)
-   {
-      double[][][] deepCopy = new double[weights.length][weights[0].length][weights[0][0].length]; // Same length
-      for (int i = 0; i < weights.length; i++)
-      {
-         for (int j = 0; j < weights[0].length; j++)
-         {
-            for (int k = 0; k < weights[0][0].length; k++)
-            {
-               deepCopy[i][j][k] = weights[i][j][k];
-            }
-         }
-      }
-
-      return deepCopy;
-   }
-
-   /**
-    * Calculates the error between a theoretical and actual output according to the formula in the design docment
-    * 
-    * @param theoreticalOutput the expected value of output
-    * @param actualOutput the actual value of the output
+    * @param theoreticalOutputs the theoretical value of outputs
+    * @param actualOutputs the actual values of the outputs
     */
    private double calculateError(double[] theoreticalOutputs, double[] actualOutputs)
    {
-      double total = 0.0;
-      for (int i = 0; i < theoreticalOutputs.length; i++)
+      double total = 0.0; // Set the total to 0.0
+      
+      for (int i = 0; i < theoreticalOutputs.length; i++) // Iterate over each of the output items (could have iterated over actualOutputs instead)
       {
          double difference = theoreticalOutputs[i] - actualOutputs[i]; // Find the difference between the theoretical and actual outputs
-         total+=difference;
+         total+=(difference*difference);                               // Add the squared difference to the running total
       }
-      return 0.5 * total;                 // Return half the difference squared
+      
+      return 0.5 * total; // Return half of the total
    }
 
    /**
-    * Calculates the total error in an array of case errors
+    * Calculates the total error in an array of case errors. Each element in the array is squared, and the
+    * squares are added together. Then, the square root of the total is returned.
     * 
     * @param errorArr an array where each element is a case error
     */
    private double calculateTotalError(double[] errorArr)
    {
-      double total = 0.0;       // This will hold the total
+      double total = 0.0; // Set the total to 0.0
+      
       for (double d : errorArr) // Use for each loop to iterate over the case error array
       {
          total += d*d; // Add the square of the case error to the running total
       }
+      
       return Math.sqrt(total); // Return the square root of the total
    }
 
    /**
-    * The main method is used to instantiate a Perceptron object, read weights, read inputs (and run the network).
+    * The main method is used to read a configuration file from the user and instantiate a Perceptron object.
+    * The configuration file must specify data in the following format:
+    * number of input nodes
+    * number of hidden layer nodes (put space-separated values if there are multiple hidden layers)
+    * number of output nodes
+    * value of lambda (fixed)
+    * max number of iterations
+    * filename for weights file or "randomize" if the weights should be random
+    * filename for inputs file
+    * filename for outputs file
+    * lower bound on random weights upper bound on random weights (space-separated)
+    * 
+    * For example, for a 2-4-3 multiple outputs network with a lambda of 0.5,
+    * a max number of iterations 1000000, random staring weights, input file
+    * "files/inputs.txt", output file "files/all.txt", lower bound on lambda
+    * -1.0, upper bound on lambda 1.0, the file would look like this:
+    * 2
+    * 4
+    * 3
+    * 0.5
+    * 1000000
+    * randomize
+    * files/inputs.txt
+    * files/all.txt
+    * -1.0 1.0
     * 
     * @param args the supplied command-line arguments
     */
    public static void main(String[] args)
    {
-      // Use the constructor which takes in a configuration file 
-      Perceptron myPerp = new Perceptron("files/config.txt");
+      Scanner sc = new Scanner(System.in);                                           // Make a scanner to accept user input
+      System.out.println("Enter a configuration file name (ex: files/config.txt):"); // Ask the user for a configuration file
+      String configFile = sc.nextLine();                                             // Read the user's input
+      
+      Perceptron myPerp = new Perceptron(configFile); // Create a Perceptron object with the user's configuration file
 
-      /*
-       * Read the inputs from the specified file and run the network on each set of inputs.
-       * In this example, the input passed to readWeights is a relative file path because files is a 
-       * folder containing the project.
-       */
-      double[][] inputs = myPerp.readInputs("files/inputs.txt");
-
-      //System.out.println(Arrays.toString(myPerp.runNetwork(inputs[1])));
-
-      myPerp.gradientDescent(inputs);
-
+      myPerp.gradientDescent(); // Perform gradient descent to find a minimum error
    }
 }
