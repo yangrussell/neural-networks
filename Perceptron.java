@@ -139,7 +139,7 @@ public class Perceptron
          int maxIterations = Integer.parseInt(fifthLine);   // Get the max number of iterations by parsing the fifth line to an Integer
 
          String weightsFile = sc.nextLine();                // Get the filename (or the word "randomize") of the weights (the sixth line)
-         
+
          String outputsFile = sc.nextLine();                // Get the filename of the outputsFile (the seventh line)
 
          String eighthLine = sc.nextLine();                 // Get eighth scanner line
@@ -242,7 +242,7 @@ public class Perceptron
       this.theoreticalOutputs = readOutputs(outputsFile); // readOutputs returns a 2D array with the theoretical outputs for all output nodes & cases
       this.lowerBound = lowerBound;                       // Set the instance variable lowerBound
       this.upperBound = upperBound;                       // Set the instance variable upperBound
-      
+
       readWeights(weightsFile);
    }
 
@@ -495,7 +495,7 @@ public class Perceptron
          for (int node = 0; node < layerSizes[layer]; node++)
          {
             activations[layer][node] = 0.0; // Reset the activation value to 0.0
-            
+
             // Extract the current activations in the layer to the left of the node
             double[] prevActivations = activations[layer-1];
 
@@ -542,7 +542,7 @@ public class Perceptron
    {
       double[][] inputs;   // Declare a 2D array to store the inputs (each row is a case)
       int inputsIndex = 0; // An index into the inputs 2D array
-      
+
       /*
        * Use a try-catch construct.
        * 
@@ -561,10 +561,10 @@ public class Perceptron
       {
          File myFile = new File(filename); // Create a File object
          Scanner sc = new Scanner(myFile); // Create a Scanner to scan the File object
-         
+
          String firstLine = sc.nextLine();               // Get the first line
          String[] firstLineArray = firstLine.split(" "); // Split it by spaces
-         
+
          int numCases = Integer.parseInt(firstLineArray[0]);         // Parse the first element as an int, it is the number of cases
          int numInputsPerCase = Integer.parseInt(firstLineArray[1]); // Parse the second element as an int, it is the numbe of inputs per case
          inputs = new double[numCases][numInputsPerCase];            // Instantiate inputs as a 2D array
@@ -597,7 +597,7 @@ public class Perceptron
             inputs[inputsIndex] = splitDouble; // The inputs 2D array at the inputsIndex is set to the next case inputs
             inputsIndex++;                     // Increment inputsIndex because we are moving to the next case
          } // while (sc.hasNextLine())
-         
+
          sc.close(); // Close the scanner
       } // try
       catch (NumberFormatException n)
@@ -670,7 +670,7 @@ public class Perceptron
             // Update weight
             weights[1][node][outputNode] += deltaWeight;
          }
-      }
+      } // for(int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
 
       // For the weights with index 0
       for (int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
@@ -700,44 +700,25 @@ public class Perceptron
                //System.out.println(deltaWeight);
                // Update the weight
                weights[0][prev][next] += deltaWeight;
-            }
-         }
-      }
+            } // for (int next = 0; next < layerSizes[1]; next++)
+         } // for (int prev = 0; prev < layerSizes[0]; prev++)
+      } // for (int outputNode = 0; outputNode < layerSizes[layerSizes.length-1]; outputNode++)
    }
 
    /**
     * The gradientDescent method minimizes the total error function by stepping the weights in the opposite direction
     * of the gradient (the direction of steepest ascent).
     * 
-    * @param trainingCases a 2D array where each 1D array is one set of training inputs
+    * @param trainingCases a 2D array where each row (1D array) is one set of training inputs
     */
    private void gradientDescent(double[][] trainingCases)
    {
-      // Counter for the number of iterations
-      int numIterations = 0;
+      int numIterations = 0; // Counter for the number of iterations
 
-      // Initialize an array to store the current case errors
-      double[] errorArr = new double[trainingCases.length];
+      double[] errorArr = new double[trainingCases.length]; // Initialize an array to store the case errors
 
-      // Copy the current weights to lastWeights, an instance variable
-
-      // Initialize an array to store the previous case errors
-      double[][] lastError = new double[trainingCases.length][layerSizes[layerSizes.length-1]];
-
-      for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
+      while (numIterations < maxIterations) // This will run until numIterations equals maxIterations
       {
-
-         double[] myTrainingCase = trainingCases[i];                      // Extract one training case
-         double[] theoreticalOutputsArray = theoreticalOutputs[i];    // Find the theoretical output
-         double[] actualOutputsArray = runNetwork(myTrainingCase);               // Run the network to get the actual output layer
-
-         //lastError[i][outputNode] = calculateError(theoreticalOutput, actualOutput); // Set array element to be one case error
-
-      }
-
-      while (numIterations < maxIterations) // This will run until numIterations exceeds maxIterations
-      {
-
          for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
          {
             double[] myTrainingCase = trainingCases[i];                      // Extract one training case
@@ -839,7 +820,7 @@ public class Perceptron
    {
       // Use the constructor which takes in a configuration file 
       Perceptron myPerp = new Perceptron("files/config.txt");
-      
+
       /*
        * Read the inputs from the specified file and run the network on each set of inputs.
        * In this example, the input passed to readWeights is a relative file path because files is a 
