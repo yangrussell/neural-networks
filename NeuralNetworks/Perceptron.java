@@ -124,7 +124,7 @@ public class Perceptron
          String weightsFile = sc.nextLine();                // Get the filename (or the word "randomize") of the weights (the sixth line)
 
          String inputsFile = sc.nextLine();                 // Get the filename of the inputs file (the seventh line)
-
+         
          String outputsFile = sc.nextLine();                // Get the filename of the outputsFile (the seventh line)
 
          String eighthLine = sc.nextLine();                 // Get eighth scanner line
@@ -214,7 +214,7 @@ public class Perceptron
        * instead of a ragged one, which uses more storage but is simpler to use.
        */
       this.activations = new double[layerSizes.length][maxNumNodes];
-
+      
       /*
        * rawActivations is a rectangular array which is the same dimensions as activations. It stores the activations
        * without an activation function applied to them.
@@ -504,14 +504,14 @@ public class Perceptron
 
             // Before applying the activation function, copy the raw activations to the rawActivations 2D array
             rawActivations[layer][node] = activations[layer][node];
-
+            
             // Apply the activation function to the new activation state by calling the activationFunction method
             activations[layer][node] = activationFunction(activations[layer][node]);
          } // for (int node = 0; node < layerSizes[layer]; node++)
       } // for (int layer = 1; layer < layerSizes.length; layer++)
 
       double[] outputs; // Declare outputs
-
+      
       if (raw = false)
       {
          /*
@@ -575,7 +575,7 @@ public class Perceptron
          trainingCases = new double[numCases][numInputsPerCase];            // Instantiate inputs as a 2D array
 
          System.out.println("INPUTS:");
-
+         
          while (sc.hasNextLine()) // Keep reading while the scanner can read another line
          {
             String line = sc.nextLine();            // Extract the next line
@@ -604,7 +604,7 @@ public class Perceptron
             trainingCases[inputsIndex] = splitDouble; // The inputs 2D array at the inputsIndex is set to the next case inputs
             inputsIndex++; // Increment inputsIndex because we are moving to the next case
          } // while (sc.hasNextLine())
-
+         
          System.out.println(); // Add a new line after the inputs are all printed out
 
          sc.close(); // Close the scanner
@@ -733,10 +733,10 @@ public class Perceptron
              * Note: Because lambda is fixed and NOT adaptive, we don't need to calculate the case errors at each iteration. If instead, lambda
              * was adaptive, we would calculate the case errors so we could see whether they increased or decreased and adjust lambda accordingly.
              */
-
+            
             lambda*=LAMBDA_MULTIPLIER; // Adaptive lambda is not implemented, but this is a placeholder in case it is implemented layer
          } // for (int i = 0; i < trainingCases.length; i++)
-
+         
          // Increment iteration counter
          numIterations++;
       } // while (numIterations < maxIterations)
@@ -751,15 +751,15 @@ public class Perceptron
          double[] actualOutputsArray = runNetwork(myTrainingCase, false); // Run the network to get the actual output layer
 
          errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the case error into an array element
-
+         
          System.out.println("Inputs: " + Arrays.toString(myTrainingCase) + " ");                 // Print out the inputs for a case
          System.out.println("Theoretical outputs: " + Arrays.toString(theoreticalOutputsArray)); // Print out the theoretical output for a case
          System.out.println("Actual outputs: " + Arrays.toString(actualOutputsArray));           // Print out the actual output for a case
 
       } // for (int i = 0; i < trainingCases.length; i++)
-
+      
       System.out.println();                                                // Print a new line to separate the results and configuration printing
-      System.out.println("NETWORK CONFIGURATION & FINAL TOTAL ERROR:");     // Print out the label for the print statements that follow
+      System.out.println("NETWORK CONFIGURATION & FINAL TOTAL ERROR");     // Print out the label for the print statements that follow
       System.out.println("Number of iterations: " + numIterations);        // Print out the number of iterations
       System.out.println("Lambda (fixed): " + lambda);                     // Print out the lambda value
       System.out.println("Total error: " + calculateTotalError(errorArr)); // Print out the final total error
@@ -775,13 +775,13 @@ public class Perceptron
    private double calculateError(double[] theoreticalOutputs, double[] actualOutputs)
    {
       double total = 0.0; // Set the total to 0.0
-
+      
       for (int i = 0; i < theoreticalOutputs.length; i++) // Iterate over each of the output items (could have iterated over actualOutputs instead)
       {
          double difference = theoreticalOutputs[i] - actualOutputs[i]; // Find the difference between the theoretical and actual outputs
          total+=(difference*difference);                               // Add the squared difference to the running total
       }
-
+      
       return 0.5 * total; // Return half of the total
    }
 
@@ -794,12 +794,12 @@ public class Perceptron
    private double calculateTotalError(double[] errorArr)
    {
       double total = 0.0; // Set the total to 0.0
-
+      
       for (double d : errorArr) // Use for each loop to iterate over the case error array
       {
          total += d*d; // Add the square of the case error to the running total
       }
-
+      
       return Math.sqrt(total); // Return the square root of the total
    }
 
@@ -837,7 +837,7 @@ public class Perceptron
       Scanner sc = new Scanner(System.in);                                           // Make a scanner to accept user input
       System.out.println("Enter a configuration file name (ex: files/config.txt):"); // Ask the user for a configuration file
       String configFile = sc.nextLine();                                             // Read the user's input
-
+      
       Perceptron myPerp = new Perceptron(configFile); // Create a Perceptron object with the user's configuration file
 
       myPerp.gradientDescent(); // Perform gradient descent to find a minimum error
