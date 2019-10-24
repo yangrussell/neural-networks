@@ -1,8 +1,9 @@
 2
 4
 3
-0.5
+1.0
 1000000
+0.00001
 randomize
 files/inputs.txt
 files/all.txt
