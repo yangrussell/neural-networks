@@ -28,7 +28,7 @@ public class Perceptron
    private double upperBound;                           // Upper bound on the random weights
    private double[][] trainingCases;                    // A 2D array - each row (besides first) is an input case
    private static final double LAMBDA_MULTIPLIER = 1.0; // A value to multiply lambda by (not in use now as the network is not adaptive)
-   private double stoppingError;                        // The network will drop if the total error drops below this threshold    
+   private double stoppingError;                        // The network will drop if the total error drops below this threshold
 
    /**
     * Constructor for the Perceptron class with parameters. Sets instance variables to values based on the parameters, using the
@@ -69,11 +69,11 @@ public class Perceptron
     * @param outputNodes the number of output nodes in the network
     */
    public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, double stoppingError,
-                     String weightsFile, String trainingCases, String outputsFile, double lowerBound, double upperBound)
+   String weightsFile, String trainingCases, String outputsFile, double lowerBound, double upperBound)
    {
       // Call the setInstanceVariables method to set the instance variables to the passed values
       setInstanceVariables(inputNodes, hiddenLayerNodes, outputNodes, lambda, maxIterations, stoppingError,
-                           weightsFile, trainingCases, outputsFile, lowerBound, upperBound);
+         weightsFile, trainingCases, outputsFile, lowerBound, upperBound);
    }
 
    /**
@@ -129,7 +129,7 @@ public class Perceptron
 
          String fifthLine = sc.nextLine();                     // Get fifth scanner line
          int maxIterations = Integer.parseInt(fifthLine);      // Get the max number of iterations by parsing the fifth line to an Integer
-         
+
          String sixthLine = sc.nextLine();                     // Get the sixth scanner line
          double stoppingError = Double.parseDouble(sixthLine); // Get the stopping error threshold by parsing the sixth line to a double
 
@@ -148,7 +148,7 @@ public class Perceptron
 
          // Call the setInstanceVariables method to set the instance variables to the values read from the configuration file
          setInstanceVariables(numInputNodes, hiddenLayerNodesArray, numOutputNodes, lambda, maxIterations, stoppingError,
-                              weightsFile, inputsFile, outputsFile, lowerBound, upperBound);
+            weightsFile, inputsFile, outputsFile, lowerBound, upperBound);
       } //try
       catch (NumberFormatException n)
       {
@@ -204,7 +204,7 @@ public class Perceptron
     * @param outputNodes the number of output nodes in the network
     */
    private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda, int maxIterations, double stoppingError,
-                                     String weightsFile, String inputsFile, String outputsFile, double lowerBound, double upperBound)
+   String weightsFile, String inputsFile, String outputsFile, double lowerBound, double upperBound)
    {
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
@@ -461,7 +461,7 @@ public class Perceptron
             System.out.println();
 
             // The Arrays.deepToString method prints a 2D array
-            System.out.println("WEIGHTS (read from file): " + Arrays.deepToString(weights));
+            System.out.println("   WEIGHTS (read from file): " + Arrays.deepToString(weights));
          } // try
          catch (InputMismatchException i)
          {
@@ -593,7 +593,7 @@ public class Perceptron
          int numInputsPerCase = Integer.parseInt(firstLineArray[1]); // Parse the second element as an int, it is the numbe of inputs per case
          trainingCases = new double[numCases][numInputsPerCase];            // Instantiate inputs as a 2D array
 
-         System.out.println("INPUTS:");
+         System.out.println("   INPUTS:");
 
          while (sc.hasNextLine()) // Keep reading while the scanner can read another line
          {
@@ -618,7 +618,7 @@ public class Perceptron
                splitDouble[i] = Double.parseDouble(splitString[i]);
             }
 
-            System.out.println("Input case: " + Arrays.toString(splitString)); // Print out the array of inputs using the Arrays.toString method
+            System.out.println("   Input case: " + Arrays.toString(splitString)); // Print out the array of inputs using the Arrays.toString method
 
             trainingCases[inputsIndex] = splitDouble; // The inputs 2D array at the inputsIndex is set to the next case inputs
             inputsIndex++; // Increment inputsIndex because we are moving to the next case
@@ -737,13 +737,13 @@ public class Perceptron
     * (number of iterations, stopping error threshold, reason for stopping, value of lambda,
     * and final total error.
     */
-   private void gradientDescent()
+   public void gradientDescent()
    {
       int numIterations = 0; // Counter for the number of iterations
 
       double[] errorArr = new double[trainingCases.length]; // Initialize an array to store the case errors
       double totalError = Integer.MAX_VALUE;
-      
+
       while (totalError >= stoppingError && numIterations < maxIterations) // Ends if totalError is below stoppingError or max iterations is reached
       {
          for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
@@ -760,7 +760,7 @@ public class Perceptron
              */
 
             lambda*=LAMBDA_MULTIPLIER; // Adaptive lambda is not implemented, but this is a placeholder in case it is implemented layer
-            
+
             errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the case error into an array element
          } // for (int i = 0; i < trainingCases.length; i++)
          totalError = calculateTotalError(errorArr); // Calculate the total error
@@ -768,26 +768,26 @@ public class Perceptron
          numIterations++; // Increment iteration counter
       } // while (totalError >= stoppingError && numIterations < maxIterations)
 
-      System.out.println("RESULTS:"); // Print out the label for the inputs, theoretical and actual outputs
+      System.out.println("   RESULTS:"); // Print out the label for the inputs, theoretical and actual outputs
 
+      double[] actualOutputsArray = null;
+      
       for (int i = 0; i < trainingCases.length; i++) // Iterate over the trainingCases 2D array
       {
          double[] myTrainingCase = trainingCases[i];                      // Extract one training case
          double[] theoreticalOutputsArray = theoreticalOutputs[i];        // Find the theoretical outputs array
-         double[] actualOutputsArray = runNetwork(myTrainingCase, false); // Run the network to get the actual output layer
+         actualOutputsArray = runNetwork(myTrainingCase, false); // Run the network to get the actual output layer
 
          errorArr[i] = calculateError(theoreticalOutputsArray, actualOutputsArray); // Save the case error into an array element
 
-         System.out.println("Inputs: " + Arrays.toString(myTrainingCase) + " ");                 // Print out the inputs for a case
-         System.out.println("Theoretical outputs: " + Arrays.toString(theoreticalOutputsArray)); // Print out the theoretical output for a case
-         System.out.println("Actual outputs: " + Arrays.toString(actualOutputsArray));           // Print out the actual output for a case
+         System.out.println("   Inputs: " + Arrays.toString(myTrainingCase) + " ");                 // Print out the inputs for a case
+         System.out.println("   Theoretical outputs: " + Arrays.toString(theoreticalOutputsArray)); // Print out the theoretical output for a case
+         System.out.println("   Actual outputs: " + Arrays.toString(actualOutputsArray));           // Print out the actual output for a case
 
       } // for (int i = 0; i < trainingCases.length; i++)
       double finalTotalError = calculateTotalError(errorArr);
-      
-      
+
       String stoppingReason; // Declare a String to store the reason that the network stopped
-      
       if (numIterations == maxIterations) // The network stopped because numIterations reached maxIterations
       {
          stoppingReason = "max number of iterations reached"; // Set stoppingReason to the relevant reason
@@ -796,16 +796,38 @@ public class Perceptron
       {
          stoppingReason = "error fell below stopping error theshold"; // Set stoppingReason to the relevant reason
       }
-      
+
       System.out.println();                                                // Print a new line to separate the results and configuration printing
-      System.out.println("NETWORK CONFIGURATION & INFORMATION:");          // Print out the label for the print statements that follow
-      System.out.println("Max number of iterations: " + maxIterations);    // Print out the maximum number of iterations
-      System.out.println("Stopping error threshold: " + stoppingError);    // Print out the stopping error threshold
-      System.out.println("Lambda (fixed): " + lambda);                     // Print out the lambda value
-      System.out.println("Total error: " + finalTotalError);               // Print out the final total error
-      System.out.println("Number of iterations run: " + numIterations);    // Print out the number of iterations
-      System.out.println("Reason for stopping: " + stoppingReason);        // Print out the reason for stopping
-      
+      System.out.println("   NETWORK CONFIGURATION & INFORMATION:");          // Print out the label for the print statements that follow
+      System.out.println("   Max number of iterations: " + maxIterations);    // Print out the maximum number of iterations
+      System.out.println("   Stopping error threshold: " + stoppingError);    // Print out the stopping error threshold
+      System.out.println("   Lambda (fixed): " + lambda);                     // Print out the lambda value
+      System.out.println("   Total error: " + finalTotalError);               // Print out the final total error
+      System.out.println("   Number of iterations run: " + numIterations);    // Print out the number of iterations
+      System.out.println("   Reason for stopping: " + stoppingReason);        // Print out the reason for stopping
+
+      writeOutputs(actualOutputsArray);
+   }
+
+   private void writeOutputs(double[] actualOutputsArray)
+   {
+      File out = new File("outputs.txt");
+      PrintStream stream = null;
+
+      try
+      {
+         out.createNewFile();
+         stream = new PrintStream(out);
+      }
+      catch (IOException i)
+      {
+         throw new RuntimeException("An error occured while writing the file");
+      }
+
+      for (int i = 0; i < actualOutputsArray.length; i++)
+      {
+         stream.print(actualOutputsArray[i] + " ");
+      }
    }
 
    /**
@@ -844,45 +866,5 @@ public class Perceptron
       }
 
       return Math.sqrt(total); // Return the square root of the total
-   }
-
-   /**
-    * The main method is used to read a configuration file from the user and instantiate a Perceptron object.
-    * The configuration file must specify data in the following format:
-    * number of input nodes
-    * number of hidden layer nodes (put space-separated values if there are multiple hidden layers)
-    * number of output nodes
-    * value of lambda (fixed)
-    * max number of iterations
-    * filename for weights file or "randomize" if the weights should be random
-    * filename for inputs file
-    * filename for outputs file
-    * lower bound on random weights upper bound on random weights (space-separated)
-    * 
-    * For example, for a 2-4-3 multiple outputs network with a lambda of 0.5,
-    * a max number of iterations 1000000, random staring weights, input file
-    * "files/inputs.txt", output file "files/all.txt", lower bound on lambda
-    * -1.0, upper bound on lambda 1.0, the file would look like this:
-    * 2
-    * 4
-    * 3
-    * 0.5
-    * 1000000
-    * randomize
-    * files/inputs.txt
-    * files/all.txt
-    * -1.0 1.0
-    * 
-    * @param args the supplied command-line arguments
-    */
-   public static void main(String[] args)
-   {
-      Scanner sc = new Scanner(System.in);                                           // Make a scanner to accept user input
-      System.out.println("Enter a configuration file name (ex: files/config.txt):"); // Ask the user for a configuration file
-      String configFile = sc.nextLine();                                             // Read the user's input
-
-      Perceptron myPerp = new Perceptron(configFile); // Create a Perceptron object with the user's configuration file
-
-      myPerp.gradientDescent(); // Perform gradient descent to find a minimum error
    }
 }

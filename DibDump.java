@@ -103,8 +103,8 @@
  *   Like all numeric types ints may be cast into other numeric types (byte, short, long, float, double).
  *   When lossy casts are done (e.g. int to byte) the conversion is done modulo the length of the smaller type.
  */
-import java.io.*;
 
+import java.io.*;
 /*
  * A member-variable-only class for holding the RGBQUAD C structure elements.
  */
@@ -118,12 +118,15 @@ final class RgbQuad
 
 public class DibDump
 {
+   static final int MAX_COLOR_TABLE_LENGTH = 256;
+
    // BITMAPFILEHEADER
    static int bmpFileHeader_bfType;          // WORD
    static int bmpFileHeader_bfSize;          // DWORD
    static int bmpFileHeader_bfReserved1;     // WORD
    static int bmpFileHeader_bfReserved2;     // WORD
    static int bmpFileHeader_bfOffBits;       // DWORD
+
    // BITMAPINFOHEADER
    static int bmpInfoHeader_biSize;          // DWORD
    static int bmpInfoHeader_biWidth;         // LONG
@@ -136,6 +139,7 @@ public class DibDump
    static int bmpInfoHeader_biYPelsPerMeter; // LONG
    static int bmpInfoHeader_biClrUsed;       // DWORD
    static int bmpInfoHeader_biClrImportant;  // DWORD
+
    // The true color pels
    static int[][] imageArray;
 
@@ -143,6 +147,35 @@ public class DibDump
    // identify it as such. Note that when the image is saved, it will be written out in the usual
    // inverted format with a positive bmpInfoHeader_biHeight value.
    static boolean topDownDIB = false;
+
+   /*
+    * These variables were migrated here form the main method.
+    */
+   static String inFileName, outFileName;
+   static int i, j, k;
+   static int numberOfColors;
+   static int pel;
+   static int iByteVal, iColumn, iBytesPerRow, iPelsPerRow, iTrailingBits, iDeadBytes;
+
+   // RBGQUAD
+   static int rgbQuad_rgbBlue;
+   static int rgbQuad_rgbGreen;
+   static int rgbQuad_rgbRed;
+   static int rgbQuad_rgbReserved;           // not used in this method
+
+   static DibDump dibdumper;
+   static int[] colorPallet;
+
+   public DibDump()
+   {
+
+   }
+
+   public DibDump(int[][] imageArray)
+   {
+      this.imageArray = imageArray;
+   }
+
    /*
     * Methods to go between little and big endian integer formats.
     */
@@ -221,38 +254,83 @@ public class DibDump
       return rgbToPel(lum, lum, lum);
    }
 
-   /*
-    *
-    * ---- MAIN ----
-    *
-    */
-   public static void main(String[] args)
+   public static void writeFile()
    {
-      String inFileName, outFileName;
-      int i, j, k;
-      int numberOfColors;
-      int pel;
-      int iByteVal, iColumn, iBytesPerRow, iPelsPerRow, iTrailingBits, iDeadBytes;
-      // RBGQUAD
-      int rgbQuad_rgbBlue;
-      int rgbQuad_rgbGreen;
-      int rgbQuad_rgbRed;
-      int rgbQuad_rgbReserved;           // not used in this method
-      // The color table
-      int[] colorPallet = new int[256];  // reserve space for the largest possible color table
+      /*
+       * Now write out the true color bitmap (32-bits) to a disk file. This is here mostly to be sure we did it all correctly.
+       *
+       */
+      try
+      {
+         iDeadBytes = (4 - (bmpInfoHeader_biWidth * 3) % 4) % 4;
 
-      DibDump dibdumper = new DibDump(); // needed to get to the byte swapping methods
+         bmpInfoHeader_biSizeImage =  (bmpInfoHeader_biWidth * 3 + iDeadBytes) * bmpInfoHeader_biHeight;
+         bmpFileHeader_bfOffBits = 54;        // 54 byte offset for 24 bit images (just open one with this app to get this value)
+         bmpFileHeader_bfSize = bmpInfoHeader_biSizeImage + bmpFileHeader_bfOffBits;
+         bmpInfoHeader_biBitCount = 32;       // 32 bit color image
+         bmpInfoHeader_biCompression = 0;     // BI_RGB (which is a value of zero)
+         bmpInfoHeader_biClrUsed = 0;         // Zero for true color
+         bmpInfoHeader_biClrImportant = 0;    // Zero for true color
 
-      if (args.length > 0)
-         inFileName = args[0];
-      else
-         inFileName = "test1.bmp";
+         FileOutputStream fstream = new FileOutputStream(outFileName);
+         DataOutputStream out = new DataOutputStream(fstream);
 
-      if (args.length > 1)
-         outFileName = args[1];
-      else
-         outFileName = "test2.bmp";
+         // BITMAPFILEHEADER
+         out.writeShort(dibdumper.swapShort(bmpFileHeader_bfType));      // WORD
+         out.writeInt(dibdumper.swapInt(bmpFileHeader_bfSize));          // DWORD
+         out.writeShort(dibdumper.swapShort(bmpFileHeader_bfReserved1)); // WORD
+         out.writeShort(dibdumper.swapShort(bmpFileHeader_bfReserved2)); // WORD
+         out.writeInt(dibdumper.swapInt(bmpFileHeader_bfOffBits));       // DWORD
 
+         // BITMAPINFOHEADER
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biSize));          // DWORD
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biWidth));         // LONG
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biHeight));        // LONG
+         out.writeShort(dibdumper.swapShort(bmpInfoHeader_biPlanes));    // WORD
+         out.writeShort(dibdumper.swapShort(bmpInfoHeader_biBitCount));  // WORD
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biCompression));   // DWORD
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biSizeImage));     // DWORD
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biXPelsPerMeter)); // LONG
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biYPelsPerMeter)); // LONG
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biClrUsed));       // DWORD
+         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biClrImportant));  // DWORD
+
+         // there is no color table for this true color image, so write out the pels
+
+         rgbQuad_rgbReserved = 0;
+
+         for (i = bmpInfoHeader_biHeight - 1; i >= 0; --i)    // write over the rows (in the usual inverted format)
+         {
+            for (j = 0; j < bmpInfoHeader_biWidth; ++j) // and the columns
+            {
+               pel = imageArray[i][j];
+               rgbQuad_rgbBlue  = pel & 0x00FF;
+               rgbQuad_rgbGreen = (pel >> 8)  & 0x00FF;
+               rgbQuad_rgbRed   = (pel >> 16) & 0x00FF;
+               out.writeByte(rgbQuad_rgbBlue); // lowest byte in the color
+               out.writeByte(rgbQuad_rgbGreen);
+               out.writeByte(rgbQuad_rgbRed);  // highest byte in the color
+               out.writeByte(rgbQuad_rgbReserved);
+            }
+            /* No dead bytes for 32-bit images
+            for (j = 0; j < iDeadBytes; ++j)
+            {
+            out.writeByte(0); // Now write out the "dead bytes" to pad to a 4 byte boundary
+            }
+             */
+         } // for (i = bmpInfoHeader_biHeight - 1; i >= 0; --i)
+
+         out.close();
+         fstream.close();
+      }
+      catch (Exception e)
+      {
+         System.err.println("File output error" + e);
+      }
+   }
+
+   public static void readInput(String inFileName)
+   {
       try // lots of things can go wrong when doing file i/o
       {
          // Open the file that is the first command line parameter
@@ -291,12 +369,12 @@ public class DibDump
          bmpFileHeader_bfReserved2 = dibdumper.swapShort(in.readUnsignedShort());    // WORD
          bmpFileHeader_bfOffBits   = dibdumper.swapInt(in.readInt());                // DWORD
 
-         System.out.printf("bfType=%2X bfSize=%d bfReserved1=%h bfReserved2=%h bfOffBits=%d\n",
-            bmpFileHeader_bfType,
-            bmpFileHeader_bfSize,
-            bmpFileHeader_bfReserved1,
-            bmpFileHeader_bfReserved2,
-            bmpFileHeader_bfOffBits);
+         // System.out.printf("bfType=%2X bfSize=%d bfReserved1=%h bfReserved2=%h bfOffBits=%d\n",
+            // bmpFileHeader_bfType,
+            // bmpFileHeader_bfSize,
+            // bmpFileHeader_bfReserved1,
+            // bmpFileHeader_bfReserved2,
+            // bmpFileHeader_bfOffBits);
 
          /*
          Read in BITMAPINFOHEADER
@@ -406,20 +484,20 @@ public class DibDump
          bmpInfoHeader_biClrUsed       = dibdumper.swapInt(in.readInt());              // DWORD
          bmpInfoHeader_biClrImportant  = dibdumper.swapInt(in.readInt());              // DWORD
 
-         System.out.printf("biSize=%d\nbiWidth=%d\nbiHeight=%d\nbiPlanes=%d\nbiBitCount=%d\nbiCompression=%d\nbiSizeImage=%d\nbiXPelsPerMeter=%d\nbiYPelsPerMeter=%d\nbiClrUsed=%d\nbiClrImportant=%d\n",
-            bmpInfoHeader_biSize,
-            bmpInfoHeader_biWidth,
-            bmpInfoHeader_biHeight,
-            bmpInfoHeader_biPlanes,
-            bmpInfoHeader_biBitCount,
-            bmpInfoHeader_biCompression,
-            bmpInfoHeader_biSizeImage,
-            bmpInfoHeader_biXPelsPerMeter,
-            bmpInfoHeader_biYPelsPerMeter,
-            bmpInfoHeader_biClrUsed,
-            bmpInfoHeader_biClrImportant);
+         // System.out.printf("biSize=%d\nbiWidth=%d\nbiHeight=%d\nbiPlanes=%d\nbiBitCount=%d\nbiCompression=%d\nbiSizeImage=%d\nbiXPelsPerMeter=%d\nbiYPelsPerMeter=%d\nbiClrUsed=%d\nbiClrImportant=%d\n",
+            // bmpInfoHeader_biSize,
+            // bmpInfoHeader_biWidth,
+            // bmpInfoHeader_biHeight,
+            // bmpInfoHeader_biPlanes,
+            // bmpInfoHeader_biBitCount,
+            // bmpInfoHeader_biCompression,
+            // bmpInfoHeader_biSizeImage,
+            // bmpInfoHeader_biXPelsPerMeter,
+            // bmpInfoHeader_biYPelsPerMeter,
+            // bmpInfoHeader_biClrUsed,
+            // bmpInfoHeader_biClrImportant);
 
-         System.out.printf("\n");
+         // System.out.printf("\n");
 
          // Since we use the height to crate arrays, it cannot have a negative a value. If the height field is
          // less than zero, then make it positive and set the topDownDIB flag to TRUE so we know that the image is
@@ -460,7 +538,7 @@ public class DibDump
             numberOfColors = 0; // no color table
          }
 
-         System.out.printf("Color Depth = %d, %d\n", bmpInfoHeader_biBitCount, numberOfColors);
+         // System.out.printf("Color Depth = %d, %d\n", bmpInfoHeader_biBitCount, numberOfColors);
          /*
           * biClrUsed -  Specifies the number of color indexes in the color table that are actually used by the bitmap.
           *     If this value is zero, the bitmap uses the maximum number of colors corresponding to the value of the biBitCount member for the compression mode specified by biCompression.
@@ -504,6 +582,7 @@ public class DibDump
           */
 
          imageArray = new int[bmpInfoHeader_biHeight][bmpInfoHeader_biWidth]; // Create the array for the pels
+         
          /*
           * I use the same loop structure for each case for clarity so you can see the similarities and differences.
           * The outer loop is over the rows (in reverse), the inner loop over the columns. 
@@ -738,6 +817,39 @@ public class DibDump
       {
          System.err.println("File input error" + e);
       }
+   }
+
+   /*
+    *
+    * ---- MAIN ----
+    *
+    */
+   public static void main(String[] args)
+   {
+
+      // The color table
+      colorPallet = new int[MAX_COLOR_TABLE_LENGTH];  // reserve space for the largest possible color table
+
+      dibdumper = new DibDump(); // needed to get to the byte swapping methods
+
+      if (args.length > 0)
+         inFileName = args[0];
+      else
+         inFileName = "test1.bmp";
+
+      if (args.length > 1)
+         outFileName = args[1];
+      else
+         outFileName = "test2.bmp";
+
+      readInput(inFileName);
+      
+      if (imageArray==null)
+      {
+         throw new RuntimeException("imageArray is null");
+      }
+         
+
       /*
        * Console dump of image bytes in HEX if the image is smaller than 33 x 33
        */
@@ -745,81 +857,17 @@ public class DibDump
       if ((bmpInfoHeader_biWidth < 33) && (bmpInfoHeader_biHeight < 33))
       {
          iBytesPerRow = bmpInfoHeader_biWidth;
-         for (i = 0; i < bmpInfoHeader_biHeight; ++i) // read over the rows
-         {
-            for (j = 0; j < iBytesPerRow; ++j)         // j is now just the column counter
-            {
-               System.out.printf("%06X\t", imageArray[i][j]);
-            }
-            System.out.printf("\n");
-         }
+         // for (i = 0; i < bmpInfoHeader_biHeight; ++i) // read over the rows
+         // {
+            // for (j = 0; j < iBytesPerRow; ++j)         // j is now just the column counter
+            // {
+               // System.out.printf("%06X\t", imageArray[i][j]);
+            // }
+            // System.out.printf("\n");
+         // }
       }
 
-      /*
-       * Now write out the true color bitmap to a disk file. This is here mostly to be sure we did it all correctly.
-       *
-       */
-      try
-      {
-         iDeadBytes = (4 - (bmpInfoHeader_biWidth * 3) % 4) % 4;
-
-         bmpInfoHeader_biSizeImage =  (bmpInfoHeader_biWidth * 3 + iDeadBytes) * bmpInfoHeader_biHeight;
-         bmpFileHeader_bfOffBits = 54;        // 54 byte offset for 24 bit images (just open one with this app to get this value)
-         bmpFileHeader_bfSize = bmpInfoHeader_biSizeImage + bmpFileHeader_bfOffBits;
-         bmpInfoHeader_biBitCount = 24;       // 24 bit color image
-         bmpInfoHeader_biCompression = 0;     // BI_RGB (which is a value of zero)
-         bmpInfoHeader_biClrUsed = 0;         // Zero for true color
-         bmpInfoHeader_biClrImportant = 0;    // Zero for true color
-
-         FileOutputStream fstream = new FileOutputStream(outFileName);
-         DataOutputStream out = new DataOutputStream(fstream);
-
-         // BITMAPFILEHEADER
-         out.writeShort(dibdumper.swapShort(bmpFileHeader_bfType));      // WORD
-         out.writeInt(dibdumper.swapInt(bmpFileHeader_bfSize));          // DWORD
-         out.writeShort(dibdumper.swapShort(bmpFileHeader_bfReserved1)); // WORD
-         out.writeShort(dibdumper.swapShort(bmpFileHeader_bfReserved2)); // WORD
-         out.writeInt(dibdumper.swapInt(bmpFileHeader_bfOffBits));       // DWORD
-
-         // BITMAPINFOHEADER
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biSize));          // DWORD
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biWidth));         // LONG
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biHeight));        // LONG
-         out.writeShort(dibdumper.swapShort(bmpInfoHeader_biPlanes));    // WORD
-         out.writeShort(dibdumper.swapShort(bmpInfoHeader_biBitCount));  // WORD
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biCompression));   // DWORD
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biSizeImage));     // DWORD
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biXPelsPerMeter)); // LONG
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biYPelsPerMeter)); // LONG
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biClrUsed));       // DWORD
-         out.writeInt(dibdumper.swapInt(bmpInfoHeader_biClrImportant));  // DWORD
-
-         // there is no color table for this true color image, so write out the pels
-
-         for (i = bmpInfoHeader_biHeight - 1; i >= 0; --i)    // write over the rows (in the usual inverted format)
-         {
-            for (j = 0; j < bmpInfoHeader_biWidth; ++j) // and the columns
-            {
-               pel = imageArray[i][j];
-               rgbQuad_rgbBlue  = pel & 0x00FF;
-               rgbQuad_rgbGreen = (pel >> 8)  & 0x00FF;
-               rgbQuad_rgbRed   = (pel >> 16) & 0x00FF;
-               out.writeByte(rgbQuad_rgbBlue); // lowest byte in the color
-               out.writeByte(rgbQuad_rgbGreen);
-               out.writeByte(rgbQuad_rgbRed);  // highest byte in the color
-            }
-            for (j = 0; j < iDeadBytes; ++j)
-            {
-               out.writeByte(0); // Now write out the "dead bytes" to pad to a 4 byte boundary
-            }
-         } // for (i = bmpInfoHeader_biHeight - 1; i >= 0; --i)
-
-         out.close();
-         fstream.close();
-      }
-      catch (Exception e)
-      {
-         System.err.println("File output error" + e);
-      }
+      writeFile();
    } // public static void main
 } // public class DibDump
+
