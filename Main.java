@@ -63,6 +63,26 @@ public class Main
       System.out.println("STEP 3: OUTPUTS FILE TO IMAGE");
       File f = new File("outputs.txt");
       DibDumpUtility.fileToImage(10, 10, f);
-      System.out.println("   Converted the network output file back to an iamge");
+      System.out.println("   Converted the network output file back to an image");
+      //Perceptron myPerp;
+
+      // for (int i = 0; i < 1000; i++)
+      // {
+         // DibDump myDibDump = new DibDump();
+         // String out = "files/images/test " + i + ".bmp";
+         // myDibDump.setOutputFile(out);
+         // DibDumpUtility.imageToFile(myDibDump);
+         // double lambda = 10.0*(Math.random()+1.0);
+         // int trainLength = 100 + (int)(Math.random()*(1000-100));
+         // myPerp = new Perceptron(100, new int[]{100}, 100, lambda, trainLength, 0.00001, "randomize", "files/inputs.txt", "files/all.txt", -1.0, 1.0);
+         // myPerp.gradientDescent();
+         // File f = new File("outputs.txt");
+         // //new File("C:/Users/russe/NeuralNetworks/files/images/" + i + "/").mkdir();
+         
+         // DibDumpUtility.fileToImage(10, 10, f, out);
+         
+         // // need to save the weights to files
+         
+      // }
    }
 }

@@ -370,11 +370,11 @@ public class DibDump
          bmpFileHeader_bfOffBits   = dibdumper.swapInt(in.readInt());                // DWORD
 
          // System.out.printf("bfType=%2X bfSize=%d bfReserved1=%h bfReserved2=%h bfOffBits=%d\n",
-            // bmpFileHeader_bfType,
-            // bmpFileHeader_bfSize,
-            // bmpFileHeader_bfReserved1,
-            // bmpFileHeader_bfReserved2,
-            // bmpFileHeader_bfOffBits);
+         // bmpFileHeader_bfType,
+         // bmpFileHeader_bfSize,
+         // bmpFileHeader_bfReserved1,
+         // bmpFileHeader_bfReserved2,
+         // bmpFileHeader_bfOffBits);
 
          /*
          Read in BITMAPINFOHEADER
@@ -485,17 +485,17 @@ public class DibDump
          bmpInfoHeader_biClrImportant  = dibdumper.swapInt(in.readInt());              // DWORD
 
          // System.out.printf("biSize=%d\nbiWidth=%d\nbiHeight=%d\nbiPlanes=%d\nbiBitCount=%d\nbiCompression=%d\nbiSizeImage=%d\nbiXPelsPerMeter=%d\nbiYPelsPerMeter=%d\nbiClrUsed=%d\nbiClrImportant=%d\n",
-            // bmpInfoHeader_biSize,
-            // bmpInfoHeader_biWidth,
-            // bmpInfoHeader_biHeight,
-            // bmpInfoHeader_biPlanes,
-            // bmpInfoHeader_biBitCount,
-            // bmpInfoHeader_biCompression,
-            // bmpInfoHeader_biSizeImage,
-            // bmpInfoHeader_biXPelsPerMeter,
-            // bmpInfoHeader_biYPelsPerMeter,
-            // bmpInfoHeader_biClrUsed,
-            // bmpInfoHeader_biClrImportant);
+         // bmpInfoHeader_biSize,
+         // bmpInfoHeader_biWidth,
+         // bmpInfoHeader_biHeight,
+         // bmpInfoHeader_biPlanes,
+         // bmpInfoHeader_biBitCount,
+         // bmpInfoHeader_biCompression,
+         // bmpInfoHeader_biSizeImage,
+         // bmpInfoHeader_biXPelsPerMeter,
+         // bmpInfoHeader_biYPelsPerMeter,
+         // bmpInfoHeader_biClrUsed,
+         // bmpInfoHeader_biClrImportant);
 
          // System.out.printf("\n");
 
@@ -582,7 +582,7 @@ public class DibDump
           */
 
          imageArray = new int[bmpInfoHeader_biHeight][bmpInfoHeader_biWidth]; // Create the array for the pels
-         
+
          /*
           * I use the same loop structure for each case for clarity so you can see the similarities and differences.
           * The outer loop is over the rows (in reverse), the inner loop over the columns. 
@@ -819,6 +819,11 @@ public class DibDump
       }
    }
 
+   public void setOutputFile(String name)
+   {
+      outFileName = name;
+   }
+
    /*
     *
     * ---- MAIN ----
@@ -843,12 +848,11 @@ public class DibDump
          outFileName = "test2.bmp";
 
       readInput(inFileName);
-      
+
       if (imageArray==null)
       {
          throw new RuntimeException("imageArray is null");
       }
-         
 
       /*
        * Console dump of image bytes in HEX if the image is smaller than 33 x 33
@@ -859,11 +863,11 @@ public class DibDump
          iBytesPerRow = bmpInfoHeader_biWidth;
          // for (i = 0; i < bmpInfoHeader_biHeight; ++i) // read over the rows
          // {
-            // for (j = 0; j < iBytesPerRow; ++j)         // j is now just the column counter
-            // {
-               // System.out.printf("%06X\t", imageArray[i][j]);
-            // }
-            // System.out.printf("\n");
+         // for (j = 0; j < iBytesPerRow; ++j)         // j is now just the column counter
+         // {
+         // System.out.printf("%06X\t", imageArray[i][j]);
+         // }
+         // System.out.printf("\n");
          // }
       }
 

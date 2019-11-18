@@ -1,14 +1,16 @@
 import java.io.*;
 import java.util.*;
 /**
- * Write a description of class DibDumpUtility here.
+ * DibDumpUtility is a class which utilizes the DibDump class to manipulate bitmaps. It can convert a bitmap to a file
+ * or a file to a bitmap.
  *
- * @author (your name)
+ * @author Russell Yang
  * @version (a version number or a date)
  */
 public class DibDumpUtility
 {
    private static final double MAX_PRENORMALIZED = 2147483648.0;
+   
    public static void imageToFile(DibDump myDibDump)
    {
       myDibDump.main(new String[]{});
@@ -53,6 +55,7 @@ public class DibDumpUtility
       }
 
       DibDump myDibDump = new DibDump(imageArray);
+      
       for (int i = 0; i < imageArray.length; i++)
       {
          for (int j = 0; j < imageArray[i].length; j++)
@@ -60,7 +63,6 @@ public class DibDumpUtility
             myDibDump.imageArray[i][j] = myDibDump.swapInt((int)(MAX_PRENORMALIZED*sc.nextDouble()));
          }
       }
-
       myDibDump.writeFile();
    }
 }
