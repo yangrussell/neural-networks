@@ -1,7 +1,9 @@
 import java.io.*;
 import java.util.*;
 /**
- * The Main class is used to instantiate and run Perceptron objects. It also interacts with the DibDump file.
+ * The Main class is used to instantiate and run Perceptron objects. The main method in this class
+ * prompts the user for a configuration file, creates a Perceptron, and performs gradient descent on
+ * that Perceptron.
  *
  * @author Russell Yang
  * @version 10/31/19 (creation date)
@@ -44,45 +46,9 @@ public class Main
       Scanner sc = new Scanner(System.in);                                           // Make a scanner to accept user input
       System.out.println("Enter a configuration file name (ex: files/config.txt):"); // Ask the user for a configuration file
       String configFile = sc.nextLine();                                             // Read the user's input
-      
-      System.out.println("STEP 1: IMAGE TO FILE");
-      DibDump myDibDump = new DibDump();
-      DibDumpUtility.imageToFile(myDibDump);
-      System.out.println("   Saved the image to file");
-      System.out.println();
-      
-      System.out.println("STEP 2: TRAINING NETWORK");
+
       Perceptron myPerp = new Perceptron(configFile); // Create a Perceptron object with the user's configuration file
 
       myPerp.gradientDescent(); // Perform gradient descent to find a minimum error
-      
-      
-      System.out.println("   Trained the network using the file as input activations");
-      System.out.println();
-   
-      System.out.println("STEP 3: OUTPUTS FILE TO IMAGE");
-      File f = new File("outputs.txt");
-      DibDumpUtility.fileToImage(10, 10, f);
-      System.out.println("   Converted the network output file back to an image");
-      //Perceptron myPerp;
-
-      // for (int i = 0; i < 1000; i++)
-      // {
-         // DibDump myDibDump = new DibDump();
-         // String out = "files/images/test " + i + ".bmp";
-         // myDibDump.setOutputFile(out);
-         // DibDumpUtility.imageToFile(myDibDump);
-         // double lambda = 10.0*(Math.random()+1.0);
-         // int trainLength = 100 + (int)(Math.random()*(1000-100));
-         // myPerp = new Perceptron(100, new int[]{100}, 100, lambda, trainLength, 0.00001, "randomize", "files/inputs.txt", "files/all.txt", -1.0, 1.0);
-         // myPerp.gradientDescent();
-         // File f = new File("outputs.txt");
-         // //new File("C:/Users/russe/NeuralNetworks/files/images/" + i + "/").mkdir();
-         
-         // DibDumpUtility.fileToImage(10, 10, f, out);
-         
-         // // need to save the weights to files
-         
-      // }
    }
 }

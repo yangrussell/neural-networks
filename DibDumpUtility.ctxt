@@ -1,8 +1,8 @@
 #BlueJ class context
 comment0.target=DibDumpUtility
 comment0.text=\r\n\ DibDumpUtility\ is\ a\ class\ which\ utilizes\ the\ DibDump\ class\ to\ manipulate\ bitmaps.\ It\ can\ convert\ a\ bitmap\ to\ a\ file\r\n\ or\ a\ file\ to\ a\ bitmap.\r\n\r\n\ @author\ Russell\ Yang\r\n\ @version\ (a\ version\ number\ or\ a\ date)\r\n
-comment1.params=myDibDump
-comment1.target=void\ imageToFile(DibDump)
-comment2.params=rowLength\ colLength\ myPels
-comment2.target=void\ fileToImage(int,\ int,\ java.io.File)
+comment1.params=filename
+comment1.target=void\ imageToFile(java.lang.String)
+comment2.params=rowLength\ colLength\ filename
+comment2.target=void\ fileToImage(int,\ int,\ java.lang.String)
 numComments=3

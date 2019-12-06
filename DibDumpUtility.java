@@ -11,10 +11,12 @@ public class DibDumpUtility
 {
    private static final double MAX_PRENORMALIZED = 2147483648.0;
    
-   public static void imageToFile(DibDump myDibDump)
+   public static void imageToFile(String filename)
    {
+      DibDump myDibDump = new DibDump();
       myDibDump.main(new String[]{});
-      File out = new File("test2.txt");
+      
+      File out = new File(filename);
       PrintStream stream = null;
 
       try
@@ -37,13 +39,13 @@ public class DibDumpUtility
          }
          //stream.println();
       }
-
    }
 
-   public static void fileToImage(int rowLength, int colLength, File myPels)
+   public static void fileToImage(int rowLength, int colLength, String filename)
    {
       int[][] imageArray = new int[rowLength][colLength];
-
+      File myPels = new File(filename);
+      
       Scanner sc;
       try
       {
