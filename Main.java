@@ -11,7 +11,9 @@ import java.util.*;
 public class Main
 {  
    /**
-    * The main method is used to read a configuration file from the user and instantiate a Perceptron object.
+    * The main method is used to read a configuration file from the user, instantiate a Perceptron
+    * object, and perform gradient descent with the Perceptron object.
+    * 
     * The configuration file must specify data in the following format:
     * number of input nodes
     * number of hidden layer nodes (put space-separated values if there are multiple hidden layers)

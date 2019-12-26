@@ -9,7 +9,7 @@ import java.util.*;
  */
 public class DibDumpUtility
 {
-   private static final double MAX_PRENORMALIZED = 2147483648.0;
+   private static final double MAX_PRENORMALIZED = 16777215.0;
    
    public static void imageToFile(String filename)
    {
@@ -35,7 +35,8 @@ public class DibDumpUtility
       {
          for (int j = 0; j < imageArray[i].length; j++)
          {
-            stream.print(((double)(myDibDump.swapInt(imageArray[i][j])))/MAX_PRENORMALIZED + " ");
+            int pel = (int)(myDibDump.imageArray[i][j] & 0x00FFFFF);
+            stream.print((double)(pel)/MAX_PRENORMALIZED + " ");
          }
          //stream.println();
       }
@@ -62,7 +63,7 @@ public class DibDumpUtility
       {
          for (int j = 0; j < imageArray[i].length; j++)
          {
-            myDibDump.imageArray[i][j] = myDibDump.swapInt((int)(MAX_PRENORMALIZED*sc.nextDouble()));
+            myDibDump.imageArray[i][j] = (int)(MAX_PRENORMALIZED*sc.nextDouble());
          }
       }
       myDibDump.writeFile();
