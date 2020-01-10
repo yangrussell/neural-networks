@@ -12,6 +12,28 @@ import java.util.*;
  * if the error drops below a threshold or a maximum number of iterations is reached. The
  * backpropagation algorithm is used when training the perceptron.
  * 
+ * Table of contents (list of methods):
+ * public Perceptron(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda,
+ *                   int maxIterations, double stoppingError, String weightsFile, String trainingCases,
+ *                   String outputsFile, double lowerBound, double upperBound)
+ * public Perceptron(String filename)
+ * private void setInstanceVariables(int inputNodes, int[] hiddenLayerNodes, int outputNodes, double lambda,
+ *                                   int maxIterations, double stoppingError, String weightsFile, String inputsFile,
+ *                                   String outputsFile, double lowerBound, double upperBound)
+ * private double[][] readOutputs(String outputsFile)
+ * private static int arrayMax(int[] arr)
+ * private void readWeights(String filename)
+ * public void setRandomWeights()
+ * public double generateRandom()
+ * private double[] runNetwork(double[] inputs, boolean raw)
+ * private void readInputs(String filename)
+ * private static double activationFunction(double x)
+ * private static double activationFunctionDerivative(double x)
+ * public void updateWeightsBackprop(double[] theoretical, double[] calculated)
+ * public void gradientDescent()
+ * private double calculateError(double[] theoreticalOutputs, double[] actualOutputs)
+ * private double calculateTotalError(double[] errorArr)
+ * 
  * @author Russell Yang
  * @version 9/4/2019 (creation date)
  */
@@ -22,6 +44,8 @@ public class Perceptron
    private double[][] activations;                      // A 2D array representing the activation states of the network
    private double[][] rawActivations;                   // A 2D array representing the activation states of the network without activation function
    private double[][][] weights;                        // A 3D array representing the weights of the network
+   private double[][] omega;                            // A 2D array representing the omega values in backpropagation
+   private double[][] psi;                              // A 2D array representing the psi values in backpropagation
    private double lambda;                               // A value of lambda, the learning factor
    private int maxIterations;                           // A maximum number of iterations that the network will train for
    private double[][] theoreticalOutputs;               // A 2D array - each row is an array of outputs for each input case
@@ -213,13 +237,13 @@ public class Perceptron
       this.layerSizes = new int[hiddenLayerNodes.length+2];     // layerSizes holds input, output, and hidden layers
       this.layerSizes[0] = inputNodes;                          // the first element of layerSizes is the number of input nodes
       this.layerSizes[hiddenLayerNodes.length+1] = outputNodes; // the last element of layerSizes is the number of output nodes
-
+      
       // the interior elements of layerSizes are the lengths of the hidden layer nodes
       for (int i = 1; i <= hiddenLayerNodes.length; i++)
       {
          layerSizes[i] = hiddenLayerNodes[i-1]; // set the value of the layerSizes array to its corresponding value in hiddenLayerNodes
       }
-
+      
       /*
        * Calculate the maximum number of nodes out of the number of input nodes, number of output nodes, and the number of nodes
        * in each of the hidden layers. Uses arrayMax as a helper method which finds the maximum number of nodes in the hidden layer
@@ -247,11 +271,23 @@ public class Perceptron
        * we avoid using ragged arrays.
        */
       this.weights = new double[hiddenLayerNodes.length+1][maxNumNodes][maxNumNodes];
+      
+      /*
+       * The omega 2D array has the same dimensions as activations and rawActivations. 
+       * Omega values are intermediate values used during backpropagation.
+       */
+      this.omega = new double[layerSizes.length][maxNumNodes];
+      
+      /*
+       * The psi 2D array also has the same dimensions as activations and rawActivations.
+       * Psi values are intermediate values used during backpropagation.
+       */
+      this.psi = new double[layerSizes.length][maxNumNodes];
 
       this.lambda = lambda;                               // Set the instance variable lambda
       this.maxIterations = maxIterations;                 // Set the instance variable maxIterations
       this.stoppingError = stoppingError;                 // Set the stopping error threshold
-      this.theoreticalOutputs = readOutputs(outputsFile); // returns a 2D array with the theoretical outputs for all output nodes & cases
+      this.theoreticalOutputs = readOutputs(outputsFile); // Returns a 2D array with the theoretical outputs for all output nodes & cases
       this.lowerBound = lowerBound;                       // Set the instance variable lowerBound
       this.upperBound = upperBound;                       // Set the instance variable upperBound
 
@@ -462,7 +498,8 @@ public class Perceptron
    }
 
    /**
-    * Sets the weights to random values between a lower and upper bound (instance variables).
+    * Sets the weights to random values between a lower and upper bound (instance variables). Uses generateRandom()
+    * as a helper method to generate random values between a lower and upper bound.
     */
    public void setRandomWeights()
    {
@@ -478,18 +515,28 @@ public class Perceptron
             // Use a for loop to iterate an amount of times equal to the number of activations in the next layer
             for (int next = 0; next < layerSizes[m+1]; next++)
             {
-               // Generate a random weight from lowerBound to upperBound at set it in the appropriate place in the weights 3D array
-               weights[m][prev][next] = Math.random()*(upperBound-lowerBound) + lowerBound;
+               // Generate a random weight using generateRandom() and set it in the appropriate place in the weights 3D array
+               weights[m][prev][next] = generateRandom();
             }
          }
       } // for (int m = 0; m < layerSizes.length-1; m++)
+   }
+   
+   /**
+    * Generates a random value between a lower and upper bound (instance variables) and returns it.
+    * 
+    * @return a random value between lowerBound and upperBound
+    */
+   public double generateRandom()
+   {
+      return Math.random()*(upperBound-lowerBound) + lowerBound;
    }
 
    /**
     * Runs the network on data. Takes in a double[] of inputs and set the values of the input nodes to be the values in
     * the inputs array. Runs the initial values of the input nodes through the network. This is done by looking at each
     * node in the hidden layers and output layer, and multiplying the previous activations by the weights running from
-    * each previous activation to the "current" node (dot product). Returns an array of doubles 
+    * each previous activation to the "current" node (dot product). Returns an array of doubles. 
     * 
     * @param inputs an array of doubles where each item is an activation state of an input node
     * @param raw true if the raw values of the output layer should be returned (no activation function)
@@ -497,8 +544,7 @@ public class Perceptron
     */
    private double[] runNetwork(double[] inputs, boolean raw)
    {
-      // Iterate a number of times equal to the number of nodes in the input layer
-      for (int i = 0; i < layerSizes[0]; i++)
+      for (int i = 0; i < layerSizes[0]; i++) // Iterate a number of times equal to the number of nodes in the input layer
       {
          /*
           * Set the value of the activation state in the input layer to be the corresponding value in the inputs array. Do the same
@@ -508,23 +554,18 @@ public class Perceptron
          rawActivations[0][i] = inputs[i];
       } // for (int i = 0; i < layerSizes[0]; i++)
 
-      // Iterate over the different activation layers, excluding the input layer
-      for (int layer = 1; layer < layerSizes.length; layer++)
+      for (int layer = 1; layer < layerSizes.length; layer++) // Iterate over the different activation layers, excluding the input layer
       {
-         // Within each layer, iterate over the indices of the nodes
-         for (int node = 0; node < layerSizes[layer]; node++)
+         for (int node = 0; node < layerSizes[layer]; node++) // Within each layer, iterate over the indices of the nodes
          {
             activations[layer][node] = 0.0;    // Reset the activation value to 0.0
             rawActivations[layer][node] = 0.0; // Do same for the raw Activations double array
-
-            // Extract the current activations in the layer to the left of the node
-            double[] prevActivations = activations[layer-1];
             
-            // The variable w is the left index for the weights
-            for (int w = 0; w < layerSizes[layer-1]; w++)
+            double[] prevActivations = activations[layer-1]; // Extract the current activations in the layer to the left of the node
+            
+            for (int w = 0; w < layerSizes[layer-1]; w++) // The variable w is the left index for the weights
             {
-               // Get one of the weights to the left
-               double prevWeight = weights[layer-1][w][node];
+               double prevWeight = weights[layer-1][w][node]; // Get one of the weights to the left
 
                // Multiply it by the corresponding current activation state to the left, and add that to the current node
                rawActivations[layer][node]+=prevActivations[w]*prevWeight;
@@ -679,40 +720,45 @@ public class Perceptron
    }
 
    /**
-    * Updates weights using the backpropagation algorithm. Only works for two connectivity layer networks. Uses the
-    * mathematical results found in Dr. Nelson's notes: "3-Minimizing and Optimizing the Error Function." Note that
-    * Greek letters used in relation to j are uppercase while the ones related to i are lowercase. Thus (for example),
-    * omegaJ refers to capital omega J and omegaI refers to lowercase omega I. By taking activation states (without
-    * the activation function applied) from the rawActivations 2D array, we avoid doing more computation.
+    * Updates weights using the backpropagation algorithm. Uses the 2D array instance variables omega and psi.
+    * Works for any number of hidden layers. Uses the mathematical results found in Dr. Nelson's notes: "4-Three Plus Layer Network."
     *
     * @param theoretical an array of theoretical outputs
     * @param calculated an array of calculated outputs
     */
    public void updateWeightsBackprop(double[] theoretical, double[] calculated)
    {
-      for (int k = 0; k < layerSizes[0]; k++) // Iterate over the input layer nodes
+      int lastLayer = layerSizes.length - 1; // Hold the index of the output layer in a variable
+      
+      for (int lastLayerNode  = 0; lastLayerNode < layerSizes[lastLayer]; lastLayerNode++) // Iterate over output layer
       {
-         for (int j = 0; j < layerSizes[1]; j++) // Iterate over the hidden layer nodes
+         omega[lastLayer][lastLayerNode] = theoretical[lastLayerNode] - calculated[lastLayerNode]; // Difference between theoretical & calculated
+         
+         // Psi at each node is the product of omega and the activation function's derivative evaluated at the node
+         psi[lastLayer][lastLayerNode] = omega[lastLayer][lastLayerNode]*activationFunctionDerivative(rawActivations[lastLayer][lastLayerNode]);
+      } // for (int lastLayerNode  = 0; lastLayerNode < layerSizes[lastLayer]; lastLayerNode++)
+      
+      for (int layer = layerSizes.length - 2; layer >= 0; layer--) // Iterate over the rest of the layers
+      {
+         for (int node = 0; node < layerSizes[layer]; node++) // Iterate over the nodes in each layer
          {
-            double omegaJ = 0.0; // omegaJ will be used to store the sum over I of psiI*wjI
+            omega[layer][node] = 0.0; // Set omega in the 2D array at the current node to be 0.0
             
-            for (int i = 0; i < layerSizes[2]; i++) // Iterate over the output layer nodes
-            {  
-               double omegaI = theoretical[i]-calculated[i];                // This is the difference between expected and actual outputs
-               double thetaI = rawActivations[2][i];                        // Equivalent to the sum over J of hJ*wJi
-               double psiI = omegaI * activationFunctionDerivative(thetaI); // This is the product of omegaI and f'(thetaI)
-
-               omegaJ += psiI*weights[1][j][i]; // Add psiI*wjI for this value of i to the running total omegaJ
-               
-               weights[1][j][i] += lambda*activations[1][j]*psiI; // Update the weights
-            } // for (int i = 0; i < layerSizes[2]; i++)
+            for (int nextLayerNode = 0; nextLayerNode < layerSizes[layer+1]; nextLayerNode++)
+            {
+               // Get psi at a node to the right times the weight connecting the current node to that node and add to running total omega
+               omega[layer][node] += psi[layer+1][nextLayerNode]*weights[layer][node][nextLayerNode];
+            }
             
-            double thetaJ = rawActivations[1][j];                        // Equivalent to the sum over K of aK*wKj
-            double psiJ = omegaJ * activationFunctionDerivative(thetaJ); // Product of omegaJ and f'(thetaJ)
-
-            weights[0][k][j] += lambda*activations[0][k]*psiJ; // Update the weights
-         } // for (int j = 0; j < layerSizes[1]; j++)
-      } // for (int k = 0; k < layerSizes[0]; k++)
+            psi[layer][node] = omega[layer][node] * activationFunctionDerivative(rawActivations[layer][node]); // Same psi calculation as before
+            
+            for (int nextLayerNode = 0; nextLayerNode < layerSizes[layer+1]; nextLayerNode++) // Iterate over the nodes in the layer to the right
+            {
+               // Update weight connecting the current node and a node in the layer to the right
+               weights[layer][node][nextLayerNode] += lambda*activations[layer][node]*psi[layer+1][nextLayerNode];
+            }
+         } // for (int node = 0; node < layerSizes[layer]; node++)
+      } // for (int layer = layerSizes.length - 2; layer >= 0; layer--)
    }
 
    /**
@@ -739,8 +785,11 @@ public class Perceptron
          for (int i = 0; i < trainingCases.length; i++) // Iterate over the 2D array of training cases
          {
             double[] myTrainingCase = trainingCases[i];                      // Extract one training case
+            //System.out.println("Case: " + Arrays.toString(myTrainingCase));
             double[] theoreticalOutputsArray = theoreticalOutputs[i];        // Get the corresponding theoretical outputs array
+            //System.out.println("Theoretical: " + Arrays.toString(theoreticalOutputsArray));
             double[] actualOutputsArray = runNetwork(myTrainingCase, false); // Run the network to get the actual outputs array
+            //System.out.println("Actual: " + Arrays.toString(actualOutputsArray));
 
             updateWeightsBackprop(theoreticalOutputsArray, actualOutputsArray); // Update the model weights according to the design document formulas
 
